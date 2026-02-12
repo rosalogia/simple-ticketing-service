@@ -18,6 +18,9 @@ SESSION_SECRET_KEY = os.getenv(
     "SESSION_SECRET_KEY", "dev-insecure-key-change-me"
 )
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN") or None
+DISCORD_REDIRECT_URI_MOBILE = os.getenv(
+    "DISCORD_REDIRECT_URI_MOBILE", "sts://auth/callback"
+)
 # Railway Postgres addon may provide postgres:// which SQLAlchemy doesn't accept
 _raw_db_url = os.getenv("DATABASE_URL", "sqlite:///./sts.db")
 DATABASE_URL = _raw_db_url.replace("postgres://", "postgresql://", 1) if _raw_db_url.startswith("postgres://") else _raw_db_url
