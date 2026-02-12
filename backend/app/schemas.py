@@ -1,0 +1,179 @@
+from __future__ import annotations
+
+from datetime import date, datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from .models import QueueRole, TicketPriority, TicketStatus
+
+
+# ── Users ──────────────────────────────────────────────────────────────
+
+
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=1, max_length=50)
+    display_name: str = Field(..., min_length=1, max_length=100)
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    display_name: str
+    avatar_url: str | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AuthStatusResponse(BaseModel):
+    authenticated: bool
+    user: UserResponse | None = None
+    dev_mode: bool = False
+    discord_client_id: str | None = None
+
+
+# ── Queues ─────────────────────────────────────────────────────────────
+
+
+class QueueCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+
+
+class QueueUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    member_max_severity: Optional[TicketPriority] = None
+
+
+class QueueMemberResponse(BaseModel):
+    id: int
+    user: UserResponse
+    role: QueueRole
+    joined_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QueueResponse(BaseModel):
+    id: int
+    name: str
+    description: str | None = None
+    icon_url: str | None = None
+    discord_guild_id: str | None = None
+    member_max_severity: TicketPriority
+    member_count: int = 0
+    my_role: QueueRole | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AddMemberRequest(BaseModel):
+    user_id: int
+    role: QueueRole = QueueRole.MEMBER
+
+
+class UpdateMemberRequest(BaseModel):
+    role: QueueRole
+
+
+class DiscordServerInfo(BaseModel):
+    guild_id: str
+    name: str
+    icon_url: str | None = None
+    member_count: int | None = None
+    bot_present: bool = False
+
+
+# ── Tickets ────────────────────────────────────────────────────────────
+
+
+class TicketCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=5000)
+    assignee_id: int
+    queue_id: int
+    priority: TicketPriority = TicketPriority.SEV3
+    due_date: Optional[date] = None
+    category: Optional[str] = Field(None, max_length=100)
+    type: Optional[str] = Field(None, max_length=100)
+    item: Optional[str] = Field(None, max_length=100)
+
+
+class TicketUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=5000)
+    assignee_id: Optional[int] = None
+    priority: Optional[TicketPriority] = None
+    status: Optional[TicketStatus] = None
+    due_date: Optional[date] = None
+    category: Optional[str] = Field(None, max_length=100)
+    type: Optional[str] = Field(None, max_length=100)
+    item: Optional[str] = Field(None, max_length=100)
+
+
+class TicketResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str]
+    priority: TicketPriority
+    status: TicketStatus
+    queue_id: int
+    assignee: UserResponse
+    assigner: UserResponse
+    due_date: Optional[date]
+    category: Optional[str]
+    type: Optional[str]
+    item: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    comment_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TicketListResponse(BaseModel):
+    tickets: list[TicketResponse]
+    total: int
+
+
+# ── Comments ───────────────────────────────────────────────────────────
+
+
+class CommentCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=5000)
+
+
+class CommentUpdate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=5000)
+
+
+class CommentResponse(BaseModel):
+    id: int
+    ticket_id: int
+    user: UserResponse
+    content: str
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Stats & Categories ────────────────────────────────────────────────
+
+
+class TicketStats(BaseModel):
+    open_count: int
+    in_progress_count: int
+    blocked_count: int
+    completed_count: int
+    overdue_count: int
+    total: int
+
+
+class CategoriesResponse(BaseModel):
+    categories: list[str]
+    types: list[str]
+    items: list[str]

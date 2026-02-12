@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sts
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: sts
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sts"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://sts:${POSTGRES_PASSWORD:-changeme}@db:5432/sts
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI:-https://localhost/api/auth/callback}
+      SESSION_SECRET_KEY: ${SESSION_SECRET_KEY}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://localhost}
+      # DEBUG is intentionally omitted — production by default
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      BACKEND_HOST: backend:8000
+    ports:
+      - "${PORT:-80}:80"
+
+volumes:
+  pgdata:

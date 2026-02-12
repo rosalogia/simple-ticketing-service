@@ -1,0 +1,12 @@
+**/.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/*.pyc
+**/*.db
+.dev-logs
+.dev-pids
+.git
+*.png
+*.org
+.playwright-mcp

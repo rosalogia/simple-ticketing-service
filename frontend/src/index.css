@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-stone-50: #faf9f7;
+  --color-stone-100: #f0eeeb;
+  --color-stone-200: #e2dfda;
+  --color-stone-300: #ccc8c1;
+  --color-stone-400: #a8a29e;
+  --color-stone-500: #78716c;
+  --color-stone-600: #57534e;
+  --color-stone-700: #44403c;
+  --color-stone-800: #292524;
+  --color-stone-900: #1c1917;
+  --color-stone-950: #0f0e0d;
+
+  --color-ink: #1a1816;
+  --color-ink-light: #2d2a27;
+  --color-ink-muted: #6b6560;
+  --color-paper: #faf9f7;
+  --color-paper-warm: #f5f3f0;
+  --color-paper-deep: #eae7e3;
+
+  --color-sev1: #dc2626;
+  --color-sev1-bg: #fef2f2;
+  --color-sev1-border: #fecaca;
+  --color-sev2: #ea580c;
+  --color-sev2-bg: #fff7ed;
+  --color-sev2-border: #fed7aa;
+  --color-sev3: #2563eb;
+  --color-sev3-bg: #eff6ff;
+  --color-sev3-border: #bfdbfe;
+  --color-sev4: #6b7280;
+  --color-sev4-bg: #f3f4f6;
+  --color-sev4-border: #d1d5db;
+
+  --color-status-open: #2563eb;
+  --color-status-open-bg: #eff6ff;
+  --color-status-progress: #d97706;
+  --color-status-progress-bg: #fffbeb;
+  --color-status-blocked: #dc2626;
+  --color-status-blocked-bg: #fef2f2;
+  --color-status-done: #16a34a;
+  --color-status-done-bg: #f0fdf4;
+  --color-status-cancel: #6b7280;
+  --color-status-cancel-bg: #f3f4f6;
+
+  --color-accent: #7c3aed;
+  --color-accent-light: #ede9fe;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Crisp mono for ticket IDs */
+.ticket-id {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--color-ink-muted);
+}
+
+/* Smooth modal backdrop */
+.modal-backdrop {
+  animation: fadeIn 0.15s ease-out;
+}
+.modal-content {
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Subtle row hover */
+.ticket-row {
+  transition: background-color 0.1s ease;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-stone-300);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-stone-400);
+}

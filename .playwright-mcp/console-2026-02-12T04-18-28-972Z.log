@@ -1,0 +1,4 @@
+[      53ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/queues/:0
+[      53ms] [ERROR] Error: X-User-Id header required in dev mode
+    at request (http://localhost:5173/src/api/client.ts:23:11)
+    at async http://localhost:5173/src/App.tsx:42:17 @ http://localhost:5173/src/App.tsx:50
