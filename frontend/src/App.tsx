@@ -183,7 +183,6 @@ function AppContent() {
         <TicketDetail
           ticketId={selectedTicketId}
           currentUserId={currentUserId}
-          users={users}
           onBack={handleBackToDashboard}
         />
       )}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Ticket, Comment as CommentType, User, QueueMember, TicketStatus } from "../types";
+import type { Ticket, Comment as CommentType, QueueMember, TicketStatus } from "../types";
 import { api, queueApi } from "../api/client";
 import { useToast } from "./Toast";
 import CommentThread from "./CommentThread";
@@ -7,7 +7,6 @@ import CommentThread from "./CommentThread";
 interface Props {
   ticketId: number;
   currentUserId: number;
-  users?: User[];
   onBack: () => void;
 }
 
@@ -79,7 +78,6 @@ function formatDateTime(iso: string): string {
 export default function TicketDetail({
   ticketId,
   currentUserId,
-  users,
   onBack,
 }: Props) {
   const [ticket, setTicket] = useState<Ticket | null>(null);

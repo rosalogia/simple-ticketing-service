@@ -23,7 +23,7 @@ const PRIORITIES: { value: TicketPriority; label: string; dot: string }[] = [
 
 export default function FilterSidebar({ filters, onChange }: Props) {
   const [searchValue, setSearchValue] = useState(filters.search || "");
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleSearch = useCallback(
     (value: string) => {
