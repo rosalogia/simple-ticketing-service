@@ -195,12 +195,12 @@ export default function TicketDetail({
         Back to Dashboard
       </button>
 
-      <div className="grid grid-cols-[1fr_320px] gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-4 md:gap-6">
         {/* Main content */}
         <div className="space-y-6">
           {/* Header card */}
           <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-            <div className="px-6 pt-5 pb-4">
+            <div className="px-4 sm:px-6 pt-5 pb-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2.5 mb-2">
@@ -253,7 +253,7 @@ export default function TicketDetail({
             </div>
 
             {/* Description */}
-            <div className="px-6 pb-5 border-t border-stone-50 pt-4">
+            <div className="px-4 sm:px-6 pb-5 border-t border-stone-50 pt-4">
               {editing ? (
                 <textarea
                   value={editData.description as string}
@@ -272,7 +272,7 @@ export default function TicketDetail({
 
             {/* Edit fields for priority/assignee/due date */}
             {editing && (
-              <div className="px-6 pb-5 border-t border-stone-50 pt-4 grid grid-cols-3 gap-3">
+              <div className="px-4 sm:px-6 pb-5 border-t border-stone-50 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-stone-500 mb-1">Priority</label>
                   <select
@@ -315,7 +315,7 @@ export default function TicketDetail({
 
             {/* Status actions */}
             {!editing && actions.length > 0 && (
-              <div className="px-6 pb-5 border-t border-stone-50 pt-4 flex items-center gap-2">
+              <div className="px-4 sm:px-6 pb-5 border-t border-stone-50 pt-4 flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-stone-400 mr-1">Actions</span>
                 {actions.map((action) => (
                   <button
@@ -342,7 +342,7 @@ export default function TicketDetail({
         </div>
 
         {/* Sidebar metadata */}
-        <div className="space-y-4">
+        <div className="space-y-4 order-first md:order-none">
           <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-5 space-y-4">
             <div>
               <div className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">

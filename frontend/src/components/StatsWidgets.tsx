@@ -44,16 +44,16 @@ const cards = [
 
 export default function StatsWidgets({ stats }: Props) {
   return (
-    <div className="grid grid-cols-5 gap-3">
+    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
       {cards.map((card) => (
         <div
           key={card.key}
-          className={`${card.bg} border ${card.border} rounded-xl px-4 py-3`}
+          className={`${card.bg} border ${card.border} rounded-xl px-3 sm:px-4 py-2.5 sm:py-3`}
         >
-          <div className={`text-2xl font-bold tracking-tight ${card.color}`}>
+          <div className={`text-xl sm:text-2xl font-bold tracking-tight ${card.color}`}>
             {stats ? stats[card.key] : "\u2014"}
           </div>
-          <div className="text-xs font-medium text-stone-500 mt-0.5">
+          <div className="text-[10px] sm:text-xs font-medium text-stone-500 mt-0.5">
             {card.label}
           </div>
         </div>

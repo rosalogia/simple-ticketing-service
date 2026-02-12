@@ -34,24 +34,24 @@ export default function Layout({
   return (
     <div className="min-h-screen bg-paper">
       <header className="bg-stone-950 border-b border-stone-800 sticky top-0 z-40">
-        <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={onShowQueues}
-              className="text-lg font-bold tracking-tight text-stone-100 hover:text-white transition-colors"
+              className="text-lg font-bold tracking-tight text-stone-100 hover:text-white transition-colors flex-shrink-0"
             >
               STS
             </button>
 
             {/* Queue switcher */}
             {currentQueue && (
-              <div className="flex items-center gap-2">
-                <span className="text-stone-600">/</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <span className="text-stone-600 flex-shrink-0">/</span>
                 {queues.length > 1 ? (
                   <select
                     value={currentQueue.id}
                     onChange={(e) => onSwitchQueue(Number(e.target.value))}
-                    className="bg-stone-800 text-stone-100 border border-stone-600 rounded-lg px-2.5 py-1 text-sm font-medium cursor-pointer hover:border-stone-400 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50 appearance-none pr-7"
+                    className="bg-stone-800 text-stone-100 border border-stone-600 rounded-lg px-2 sm:px-2.5 py-1 text-sm font-medium cursor-pointer hover:border-stone-400 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50 appearance-none pr-7 min-w-0 max-w-[140px] sm:max-w-none truncate"
                     style={{
                       backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
                       backgroundRepeat: "no-repeat",
@@ -65,7 +65,7 @@ export default function Layout({
                     ))}
                   </select>
                 ) : (
-                  <span className="text-stone-300 text-sm font-medium">
+                  <span className="text-stone-300 text-sm font-medium truncate">
                     {currentQueue.name}
                   </span>
                 )}
@@ -74,7 +74,7 @@ export default function Layout({
                 {currentQueue.my_role === "OWNER" && (
                   <button
                     onClick={onShowSettings}
-                    className="text-stone-500 hover:text-stone-300 transition-colors p-1"
+                    className="text-stone-500 hover:text-stone-300 transition-colors p-1 flex-shrink-0"
                     title="Queue Settings"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -87,7 +87,7 @@ export default function Layout({
             )}
 
             {!currentQueue && (
-              <span className="text-stone-600 text-xs font-mono tracking-wider uppercase">
+              <span className="text-stone-600 text-xs font-mono tracking-wider uppercase hidden sm:inline">
                 Tickets
               </span>
             )}
@@ -99,24 +99,24 @@ export default function Layout({
               onChange={onUserChange}
             />
           ) : user ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {user.avatar_url ? (
                 <img
                   src={user.avatar_url}
                   alt=""
-                  className="w-8 h-8 rounded-full"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-stone-300 text-sm font-medium">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-stone-700 flex items-center justify-center text-stone-300 text-xs sm:text-sm font-medium">
                   {user.display_name.charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="text-stone-200 text-sm font-medium">
+              <span className="text-stone-200 text-sm font-medium hidden sm:inline">
                 {user.display_name}
               </span>
               <button
                 onClick={onLogout}
-                className="text-stone-500 text-sm hover:text-stone-300 transition-colors ml-2 cursor-pointer"
+                className="text-stone-500 text-xs sm:text-sm hover:text-stone-300 transition-colors cursor-pointer"
               >
                 Log out
               </button>
@@ -124,7 +124,7 @@ export default function Layout({
           ) : null}
         </div>
       </header>
-      <main className="max-w-[1400px] mx-auto px-6 py-6">{children}</main>
+      <main className="max-w-[1400px] mx-auto px-3 sm:px-6 py-4 sm:py-6">{children}</main>
     </div>
   );
 }
