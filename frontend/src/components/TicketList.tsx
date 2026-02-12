@@ -82,7 +82,9 @@ export default function TicketList({
       <div className="text-xs text-stone-400 mb-3">
         {total} ticket{total !== 1 ? "s" : ""}
       </div>
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
+
+      {/* Desktop table view */}
+      <div className="hidden md:block bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
         <table className="w-full">
           <thead>
             <tr className="border-b border-stone-100">
@@ -175,10 +177,64 @@ export default function TicketList({
         </table>
       </div>
 
+      {/* Mobile card view */}
+      <div className="md:hidden space-y-2">
+        {tickets.map((ticket) => {
+          const overdue = isOverdue(ticket);
+          const pBadge = priorityBadge[ticket.priority];
+          const sBadge = statusBadge[ticket.status];
+          const person =
+            activeTab === "assigned_to_me"
+              ? ticket.assigner
+              : ticket.assignee;
+
+          return (
+            <div
+              key={ticket.id}
+              onClick={() => onSelectTicket(ticket.id)}
+              className={`bg-white rounded-xl border border-stone-200 shadow-sm p-3.5 cursor-pointer active:bg-paper-warm transition-colors ${overdue ? "border-l-[3px] border-l-sev1" : ""}`}
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-ink leading-snug line-clamp-2">
+                    {ticket.title}
+                  </div>
+                </div>
+                <span className="ticket-id flex-shrink-0">#{ticket.id}</span>
+              </div>
+              <div className="flex items-center flex-wrap gap-1.5">
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${pBadge.cls}`}>
+                  {pBadge.label}
+                </span>
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${sBadge.cls}`}>
+                  {sBadge.label}
+                </span>
+                {ticket.due_date && (
+                  <span className={`text-[10px] ${overdue ? "text-sev1 font-semibold" : "text-stone-500"}`}>
+                    {formatDate(ticket.due_date)}
+                  </span>
+                )}
+                {ticket.comment_count > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-400">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    {ticket.comment_count}
+                  </span>
+                )}
+                <span className="text-[10px] text-stone-400 ml-auto">
+                  {person.display_name}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between mt-4 gap-2">
           <div className="text-xs text-stone-400">
-            Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} of {total}
+            {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} of {total}
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -188,19 +244,24 @@ export default function TicketList({
             >
               Prev
             </button>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => onPageChange(i)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                  i === page
-                    ? "bg-stone-900 text-white"
-                    : "text-stone-500 hover:text-ink-light bg-white border border-stone-200"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
+            <span className="hidden sm:flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => onPageChange(i)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                    i === page
+                      ? "bg-stone-900 text-white"
+                      : "text-stone-500 hover:text-ink-light bg-white border border-stone-200"
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </span>
+            <span className="sm:hidden text-xs text-stone-500">
+              {page + 1}/{totalPages}
+            </span>
             <button
               onClick={() => onPageChange(page + 1)}
               disabled={page >= totalPages - 1}

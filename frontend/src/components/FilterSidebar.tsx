@@ -23,6 +23,7 @@ const PRIORITIES: { value: TicketPriority; label: string; dot: string }[] = [
 
 export default function FilterSidebar({ filters, onChange }: Props) {
   const [searchValue, setSearchValue] = useState(filters.search || "");
+  const [expanded, setExpanded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleSearch = useCallback(
@@ -60,9 +61,12 @@ export default function FilterSidebar({ filters, onChange }: Props) {
     onChange({});
   };
 
+  const activeFilterCount =
+    (filters.status?.length || 0) + (filters.priority?.length || 0);
+
   return (
-    <div className="w-56 flex-shrink-0 space-y-5">
-      {/* Search */}
+    <div className="w-full lg:w-56 lg:flex-shrink-0 space-y-3 lg:space-y-5">
+      {/* Search - always visible */}
       <div>
         <div className="relative">
           <svg
@@ -89,64 +93,107 @@ export default function FilterSidebar({ filters, onChange }: Props) {
         </div>
       </div>
 
-      {/* Status */}
-      <div>
-        <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
-          Status
-        </h3>
-        <div className="space-y-1">
-          {STATUSES.map((s) => (
-            <label
-              key={s.value}
-              className="flex items-center gap-2.5 py-1 px-1 rounded-md hover:bg-paper-warm cursor-pointer transition-colors"
-            >
-              <input
-                type="checkbox"
-                checked={filters.status?.includes(s.value) || false}
-                onChange={() => toggleStatus(s.value)}
-                className="rounded border-stone-300 text-accent focus:ring-accent/30 w-3.5 h-3.5"
-              />
-              <span className="text-sm text-ink-light">{s.label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Priority */}
-      <div>
-        <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
-          Priority
-        </h3>
-        <div className="space-y-1">
-          {PRIORITIES.map((p) => (
-            <label
-              key={p.value}
-              className="flex items-center gap-2.5 py-1 px-1 rounded-md hover:bg-paper-warm cursor-pointer transition-colors"
-            >
-              <input
-                type="checkbox"
-                checked={filters.priority?.includes(p.value) || false}
-                onChange={() => togglePriority(p.value)}
-                className="rounded border-stone-300 text-accent focus:ring-accent/30 w-3.5 h-3.5"
-              />
-              <span
-                className={`w-2 h-2 rounded-full ${p.dot} flex-shrink-0`}
-              />
-              <span className="text-sm text-ink-light">{p.label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Clear */}
-      {hasFilters && (
-        <button
-          onClick={clearAll}
-          className="text-xs text-ink-muted hover:text-ink-light transition-colors underline underline-offset-2"
+      {/* Toggle button on mobile */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="lg:hidden flex items-center gap-2 text-xs font-medium text-stone-500 hover:text-ink-light transition-colors"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         >
-          Clear all filters
-        </button>
-      )}
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <line x1="4" y1="12" x2="14" y2="12" />
+          <line x1="4" y1="18" x2="8" y2="18" />
+        </svg>
+        Filters
+        {activeFilterCount > 0 && (
+          <span className="bg-stone-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+            {activeFilterCount}
+          </span>
+        )}
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`transition-transform ${expanded ? "rotate-180" : ""}`}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {/* Filter checkboxes - collapsible on mobile */}
+      <div className={`space-y-4 lg:space-y-5 ${expanded ? "block" : "hidden lg:block"}`}>
+        {/* Status */}
+        <div>
+          <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
+            Status
+          </h3>
+          <div className="flex flex-wrap gap-1.5 lg:flex-col lg:gap-0 lg:space-y-1">
+            {STATUSES.map((s) => (
+              <label
+                key={s.value}
+                className="flex items-center gap-2 lg:gap-2.5 py-1 px-2 lg:px-1 rounded-md hover:bg-paper-warm cursor-pointer transition-colors border border-stone-200 lg:border-transparent"
+              >
+                <input
+                  type="checkbox"
+                  checked={filters.status?.includes(s.value) || false}
+                  onChange={() => toggleStatus(s.value)}
+                  className="rounded border-stone-300 text-accent focus:ring-accent/30 w-3.5 h-3.5"
+                />
+                <span className="text-sm text-ink-light">{s.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Priority */}
+        <div>
+          <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
+            Priority
+          </h3>
+          <div className="flex flex-wrap gap-1.5 lg:flex-col lg:gap-0 lg:space-y-1">
+            {PRIORITIES.map((p) => (
+              <label
+                key={p.value}
+                className="flex items-center gap-2 lg:gap-2.5 py-1 px-2 lg:px-1 rounded-md hover:bg-paper-warm cursor-pointer transition-colors border border-stone-200 lg:border-transparent"
+              >
+                <input
+                  type="checkbox"
+                  checked={filters.priority?.includes(p.value) || false}
+                  onChange={() => togglePriority(p.value)}
+                  className="rounded border-stone-300 text-accent focus:ring-accent/30 w-3.5 h-3.5"
+                />
+                <span
+                  className={`w-2 h-2 rounded-full ${p.dot} flex-shrink-0`}
+                />
+                <span className="text-sm text-ink-light">{p.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Clear */}
+        {hasFilters && (
+          <button
+            onClick={clearAll}
+            className="text-xs text-ink-muted hover:text-ink-light transition-colors underline underline-offset-2"
+          >
+            Clear all filters
+          </button>
+        )}
+      </div>
     </div>
   );
 }

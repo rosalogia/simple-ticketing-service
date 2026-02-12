@@ -72,33 +72,35 @@ export default function Dashboard({
   return (
     <div>
       {/* Tab bar + create button */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-1 bg-paper-warm rounded-lg p-1 border border-stone-200">
+      <div className="flex items-center justify-between mb-4 sm:mb-5 gap-2">
+        <div className="flex items-center gap-1 bg-paper-warm rounded-lg p-1 border border-stone-200 min-w-0">
           <button
             onClick={() => handleTabChange("assigned_to_me")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+            className={`px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-all whitespace-nowrap ${
               activeTab === "assigned_to_me"
                 ? "bg-white text-ink shadow-sm"
                 : "text-stone-500 hover:text-ink-light"
             }`}
           >
-            Assigned to Me
+            To Me
+            <span className="hidden sm:inline"> (Assigned)</span>
           </button>
           <button
             onClick={() => handleTabChange("assigned_by_me")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+            className={`px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-all whitespace-nowrap ${
               activeTab === "assigned_by_me"
                 ? "bg-white text-ink shadow-sm"
                 : "text-stone-500 hover:text-ink-light"
             }`}
           >
-            Assigned by Me
+            By Me
+            <span className="hidden sm:inline"> (Assigned)</span>
           </button>
         </div>
 
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-lg transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-lg transition-colors shadow-sm flex-shrink-0"
         >
           <svg
             width="14"
@@ -113,17 +115,18 @@ export default function Dashboard({
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          New Ticket
+          <span className="hidden sm:inline">New Ticket</span>
+          <span className="sm:hidden">New</span>
         </button>
       </div>
 
       {/* Stats */}
-      <div className="mb-5">
+      <div className="mb-4 sm:mb-5">
         <StatsWidgets stats={stats} />
       </div>
 
       {/* Filter sidebar + Ticket list */}
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
         <FilterSidebar filters={filters} onChange={(f) => { setFilters(f); setPage(0); }} />
         {loading ? (
           <div className="flex-1 flex items-center justify-center py-20">

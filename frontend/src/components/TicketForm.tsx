@@ -62,11 +62,11 @@ export default function TicketForm({
 
   return (
     <div
-      className="modal-backdrop fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-[10vh]"
+      className="modal-backdrop fixed inset-0 bg-black/40 z-50 flex items-end sm:items-start justify-center sm:pt-[10vh]"
       onClick={onClose}
     >
       <div
-        className="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-stone-200"
+        className="modal-content bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg border border-stone-200 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 pt-6 pb-4 border-b border-stone-100">
@@ -115,7 +115,7 @@ export default function TicketForm({
           </div>
 
           {/* Assignee + Priority row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-ink-light mb-1">
                 Assignee <span className="text-sev1">*</span>
@@ -173,7 +173,7 @@ export default function TicketForm({
                 (optional)
               </span>
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
                 <input
                   list="cat-opts"
