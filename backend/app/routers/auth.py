@@ -262,10 +262,9 @@ async def callback_mobile(code: str, db: DBSession = Depends(get_db)):
     db.commit()
     db.refresh(session)
 
-    return {
-        "session_id": session.id,
-        "user": UserResponse.model_validate(user).model_dump(mode="json"),
-    }
+    # Redirect to the mobile app's deep link with the session token
+    deep_link = f"sts://auth/callback?session_id={session.id}"
+    return RedirectResponse(url=deep_link, status_code=302)
 
 
 class DevLoginRequest(BaseModel):

@@ -73,20 +73,25 @@ export function AuthProvider({children}: {children: ReactNode}) {
   useEffect(() => {
     const handleUrl = async (event: {url: string}) => {
       const url = event.url;
-      // sts://auth/callback?code=...
+      // sts://auth/callback?session_id=...
       if (url.startsWith('sts://auth/callback')) {
-        const match = url.match(/[?&]code=([^&]+)/);
+        const match = url.match(/[?&]session_id=([^&]+)/);
         if (match) {
           try {
-            const result = await authApi.callbackMobile(match[1]);
-            setToken(result.session_id);
-            await saveToken(result.session_id);
-            setState(prev => ({
-              ...prev,
-              isAuthenticated: true,
-              user: result.user,
-              isLoading: false,
-            }));
+            const sessionId = match[1];
+            setToken(sessionId);
+            await saveToken(sessionId);
+            const status = await authApi.getStatus();
+            if (status.authenticated && status.user) {
+              setState(prev => ({
+                ...prev,
+                isAuthenticated: true,
+                user: status.user,
+                isLoading: false,
+              }));
+            } else {
+              resetAuth();
+            }
           } catch {
             resetAuth();
           }
