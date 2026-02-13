@@ -35,28 +35,36 @@ export default function CreateTicketScreen({navigation, route}: Props) {
   const [members, setMembers] = useState<QueueMember[]>([]);
   const [categories, setCategories] = useState<CategoriesResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [assigneeQuery, setAssigneeQuery] = useState('');
+  const [assigneeFocused, setAssigneeFocused] = useState(false);
 
   useEffect(() => {
     queueApi.getMembers(queueId).then(setMembers).catch(() => {});
     api.getCategories(queueId).then(setCategories).catch(() => {});
   }, [queueId]);
 
-  // Default assignee to current user
+  // Default assignee to current user (only on mount)
   useEffect(() => {
-    if (user && !assigneeId) {
+    if (user) {
       setAssigneeId(user.id);
+      setAssigneeQuery(user.display_name);
     }
-  }, [user, assigneeId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleAssigneePicker = () => {
-    const options = members.map(m => ({
-      text: m.user.display_name,
-      onPress: () => setAssigneeId(m.user.id),
-    }));
-    Alert.alert('Select Assignee', '', [
-      ...options,
-      {text: 'Cancel', style: 'cancel'},
-    ]);
+  const filteredMembers = members.filter(m => {
+    if (!assigneeQuery.trim()) return true;
+    const q = assigneeQuery.toLowerCase();
+    return (
+      m.user.display_name.toLowerCase().includes(q) ||
+      m.user.username.toLowerCase().includes(q)
+    );
+  });
+
+  const selectAssignee = (member: QueueMember) => {
+    setAssigneeId(member.user.id);
+    setAssigneeQuery(member.user.display_name);
+    setAssigneeFocused(false);
   };
 
   const handlePriorityPicker = () => {
@@ -117,9 +125,6 @@ export default function CreateTicketScreen({navigation, route}: Props) {
     }
   };
 
-  const assigneeName =
-    members.find(m => m.user.id === assigneeId)?.user.display_name || 'Select...';
-
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.form}>
@@ -143,9 +148,31 @@ export default function CreateTicketScreen({navigation, route}: Props) {
         />
 
         <Text style={styles.label}>Assignee *</Text>
-        <TouchableOpacity style={styles.picker} onPress={handleAssigneePicker}>
-          <Text style={styles.pickerText}>{assigneeName}</Text>
-        </TouchableOpacity>
+        <TextInput
+          style={styles.input}
+          value={assigneeQuery}
+          onChangeText={text => {
+            setAssigneeQuery(text);
+            setAssigneeId(null);
+            setAssigneeFocused(true);
+          }}
+          onFocus={() => setAssigneeFocused(true)}
+          placeholder="Search members..."
+          placeholderTextColor={colors.stone400}
+        />
+        {assigneeFocused && filteredMembers.length > 0 && (
+          <View style={styles.suggestions}>
+            {filteredMembers.map(m => (
+              <TouchableOpacity
+                key={m.user.id}
+                style={styles.suggestionItem}
+                onPress={() => selectAssignee(m)}>
+                <Text style={styles.suggestionName}>{m.user.display_name}</Text>
+                <Text style={styles.suggestionUsername}>@{m.user.username}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <Text style={styles.label}>Priority</Text>
         <TouchableOpacity style={styles.picker} onPress={handlePriorityPicker}>
@@ -253,6 +280,33 @@ const styles = StyleSheet.create({
   pickerText: {
     fontSize: fontSize.md,
     color: colors.ink,
+  },
+  suggestions: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.stone200,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: borderRadius.md,
+    borderBottomRightRadius: borderRadius.md,
+    maxHeight: 200,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.stone100,
+  },
+  suggestionName: {
+    fontSize: fontSize.md,
+    color: colors.ink,
+    fontWeight: fontWeight.medium,
+  },
+  suggestionUsername: {
+    fontSize: fontSize.sm,
+    color: colors.inkMuted,
+    marginLeft: spacing.sm,
   },
   submitButton: {
     backgroundColor: colors.accent,
