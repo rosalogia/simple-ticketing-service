@@ -14,8 +14,9 @@ import type {
 } from '../types';
 
 // Base URL — full URL required for mobile (no relative paths)
-// TODO: revert after testing — temporarily using prod API in dev mode
-const API_BASE = 'https://simple-ticketing-service.up.railway.app';
+const API_BASE = __DEV__
+  ? 'http://localhost:8000'
+  : 'https://simple-ticketing-service.up.railway.app';
 
 // Token management — set by AuthContext after loading from keychain
 let _token: string | null = null;

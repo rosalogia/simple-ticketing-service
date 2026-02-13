@@ -3,6 +3,7 @@ import {ActivityIndicator, View} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useAuth} from '../auth/AuthContext';
 import {colors, fontSize, fontWeight} from '../theme';
 
@@ -113,13 +114,23 @@ function MainTabNavigator({route}: {route: {params: {queueId: number}}}) {
       }}>
       <Tab.Screen
         name="HomeTab"
-        options={{title: 'Tickets'}}
+        options={{
+          title: 'Tickets',
+          tabBarIcon: ({color, size}) => (
+            <Icon name="ticket-outline" size={size} color={color} />
+          ),
+        }}
       >
         {() => <HomeStackNavigator queueId={queueId} />}
       </Tab.Screen>
       <Tab.Screen
         name="SettingsTab"
-        options={{title: 'Settings'}}
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({color, size}) => (
+            <Icon name="cog-outline" size={size} color={color} />
+          ),
+        }}
       >
         {() => <SettingsStackNavigator queueId={queueId} />}
       </Tab.Screen>
