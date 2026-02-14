@@ -143,21 +143,27 @@ def _should_page_sev1_off_hours(db: Session, user_id: int, queue_id: int) -> boo
 
 def trigger_page_for_ticket(db: Session, ticket: Ticket) -> None:
     """Send a disruptive page to the ticket's assignee."""
+    logger.warning("trigger_page_for_ticket: ticket=%s priority=%s status=%s", ticket.id, ticket.priority, ticket.status)
     if ticket.priority not in (TicketPriority.SEV1, TicketPriority.SEV2):
+        logger.warning("Page skipped: priority %s not pageable", ticket.priority)
         return
 
     user_id = ticket.assignee_id
     queue_id = ticket.queue_id
     within_hours = _is_within_pageable_hours(db, user_id, queue_id)
+    logger.warning("Page check: user=%s queue=%s within_hours=%s", user_id, queue_id, within_hours)
 
     if ticket.priority == TicketPriority.SEV2 and not within_hours:
+        logger.warning("SEV2 page skipped: outside pageable hours")
         return
 
     if ticket.priority == TicketPriority.SEV1 and not within_hours:
         if not _should_page_sev1_off_hours(db, user_id, queue_id):
+            logger.warning("SEV1 page skipped: user opted out off-hours")
             return
 
     tokens = _get_user_device_tokens(db, user_id)
+    logger.warning("Page: found %d device tokens for user %s", len(tokens), user_id)
     data = {
         "type": "page",
         "ticket_id": str(ticket.id),
@@ -166,6 +172,7 @@ def trigger_page_for_ticket(db: Session, ticket: Ticket) -> None:
         "status": ticket.status.value,
     }
     for token in tokens:
-        send_page(token, data)
+        result = send_page(token, data)
+        logger.warning("send_page result: %s", result)
 
-    logger.info("Page sent for ticket %s (%s) to user %s", ticket.id, ticket.priority.value, user_id)
+    logger.warning("Page sent for ticket %s (%s) to user %s", ticket.id, ticket.priority.value, user_id)
