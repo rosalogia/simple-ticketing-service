@@ -11,6 +11,7 @@ import type {
   QueueMember,
   QueueRole,
   DiscordServerInfo,
+  UserQueueSettings,
 } from '../types';
 
 // Base URL — full URL required for mobile (no relative paths)
@@ -239,4 +240,44 @@ export const api = {
 
   getCategories: (queueId: number) =>
     request<CategoriesResponse>(`/api/categories/?queue_id=${queueId}`),
+
+  acknowledgeTicket: (ticketId: number) =>
+    request<{status: string}>(`/api/tickets/${ticketId}/acknowledge`, {
+      method: 'POST',
+    }),
+};
+
+// Device Token API
+export const deviceApi = {
+  registerToken: (token: string, platform: 'android' | 'ios') =>
+    request<{status: string}>('/api/devices/token', {
+      method: 'POST',
+      body: JSON.stringify({token, platform}),
+    }),
+
+  unregisterToken: (token: string, platform: 'android' | 'ios') =>
+    request<{status: string}>('/api/devices/token', {
+      method: 'DELETE',
+      body: JSON.stringify({token, platform}),
+    }),
+};
+
+// Queue Settings API
+export const settingsApi = {
+  getMySettings: (queueId: number) =>
+    request<UserQueueSettings>(`/api/queues/${queueId}/my-settings`),
+
+  updateMySettings: (
+    queueId: number,
+    data: {
+      pageable_start?: string;
+      pageable_end?: string;
+      timezone?: string;
+      sev1_off_hours_opt_out?: boolean;
+    },
+  ) =>
+    request<UserQueueSettings>(`/api/queues/${queueId}/my-settings`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };

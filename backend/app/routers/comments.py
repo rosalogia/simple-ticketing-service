@@ -6,6 +6,7 @@ from ..ratelimit import limiter
 from ..auth import get_current_user_id
 from ..database import get_db
 from ..models import Comment, QueueMember, Ticket, User
+from ..notifications import notify_comment_added
 from ..schemas import CommentCreate, CommentResponse, CommentUpdate
 
 router = APIRouter()
@@ -65,6 +66,11 @@ def create_comment(
     db.add(comment)
     db.commit()
     db.refresh(comment)
+
+    # Notify assigner and assignee about new comment
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if ticket:
+        notify_comment_added(db, ticket, current_user_id)
 
     comment = (
         db.query(Comment)

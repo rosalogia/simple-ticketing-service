@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import date
+import logging
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import case, func
@@ -12,6 +13,8 @@ from ..auth import get_current_user_id
 from ..database import get_db
 from ..models import (
     Comment,
+    EscalationTracking,
+    PageTracking,
     Queue,
     QueueMember,
     QueueRole,
@@ -20,6 +23,12 @@ from ..models import (
     TicketPriority,
     TicketStatus,
 )
+from ..notifications import (
+    notify_status_changed,
+    notify_ticket_assigned,
+    notify_ticket_reassigned,
+    trigger_page_for_ticket,
+)
 from ..schemas import (
     TicketCreate,
     TicketListResponse,
@@ -27,6 +36,8 @@ from ..schemas import (
     TicketStats,
     TicketUpdate,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -235,6 +246,28 @@ def create_ticket(
     db.commit()
     db.refresh(ticket)
 
+    # Create page tracking for SEV1/SEV2
+    if ticket.priority in (TicketPriority.SEV1, TicketPriority.SEV2):
+        now = datetime.now(timezone.utc)
+        pt = PageTracking(ticket_id=ticket.id, last_page_sent_at=now)
+        db.add(pt)
+        db.commit()
+        trigger_page_for_ticket(db, ticket)
+
+    # Create escalation tracking when due_date is set
+    if ticket.due_date:
+        et = EscalationTracking(
+            ticket_id=ticket.id,
+            original_priority=ticket.priority,
+            escalation_count=0,
+            paused=False,
+        )
+        db.add(et)
+        db.commit()
+
+    # Send notification to assignee
+    notify_ticket_assigned(db, ticket)
+
     ticket = (
         db.query(Ticket)
         .options(
@@ -286,6 +319,11 @@ def update_ticket(
 
     update_data = payload.model_dump(exclude_unset=True)
 
+    # Capture old values for notification logic
+    old_assignee_id = ticket.assignee_id
+    old_status = ticket.status
+    old_priority = ticket.priority
+
     # If changing assignee, verify new assignee is queue member
     if "assignee_id" in update_data:
         assignee_member = (
@@ -305,6 +343,48 @@ def update_ticket(
     db.commit()
     db.refresh(ticket)
 
+    now = datetime.now(timezone.utc)
+
+    # Handle assignee change notifications + paging
+    if "assignee_id" in update_data and update_data["assignee_id"] != old_assignee_id:
+        notify_ticket_reassigned(db, ticket, old_assignee_id, update_data["assignee_id"])
+        # Reset page tracking for new assignee on SEV1/SEV2
+        if ticket.priority in (TicketPriority.SEV1, TicketPriority.SEV2):
+            pt = db.query(PageTracking).filter(PageTracking.ticket_id == ticket.id).first()
+            if pt:
+                pt.last_page_sent_at = now
+                pt.acknowledged_at = None
+                pt.acknowledged_by = None
+            else:
+                pt = PageTracking(ticket_id=ticket.id, last_page_sent_at=now)
+                db.add(pt)
+            db.commit()
+            trigger_page_for_ticket(db, ticket)
+
+    # Handle status change notifications
+    if "status" in update_data and ticket.status != old_status:
+        notify_status_changed(db, ticket, current_user_id)
+
+        # Toggle escalation paused state
+        et = db.query(EscalationTracking).filter(EscalationTracking.ticket_id == ticket.id).first()
+        if et:
+            if ticket.status in (TicketStatus.BLOCKED, TicketStatus.COMPLETED, TicketStatus.CANCELLED):
+                et.paused = True
+            else:
+                et.paused = False
+            db.commit()
+
+    # Handle priority change — create/remove page tracking as needed
+    if "priority" in update_data and ticket.priority != old_priority:
+        if ticket.priority in (TicketPriority.SEV1, TicketPriority.SEV2):
+            pt = db.query(PageTracking).filter(PageTracking.ticket_id == ticket.id).first()
+            if not pt:
+                pt = PageTracking(ticket_id=ticket.id, last_page_sent_at=now)
+                db.add(pt)
+                db.commit()
+            if ticket.status in (TicketStatus.OPEN, TicketStatus.IN_PROGRESS):
+                trigger_page_for_ticket(db, ticket)
+
     ticket = (
         db.query(Ticket)
         .options(
@@ -316,6 +396,28 @@ def update_ticket(
         .first()
     )
     return _ticket_to_response(ticket)
+
+
+@router.post("/{ticket_id}/acknowledge")
+def acknowledge_ticket(
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(404, "Ticket not found")
+
+    _require_ticket_access(db, ticket, current_user_id)
+
+    pt = db.query(PageTracking).filter(PageTracking.ticket_id == ticket.id).first()
+    if not pt:
+        raise HTTPException(404, "No page tracking for this ticket")
+
+    pt.acknowledged_at = datetime.now(timezone.utc)
+    pt.acknowledged_by = current_user_id
+    db.commit()
+    return {"status": "acknowledged"}
 
 
 @router.delete("/{ticket_id}", status_code=204)

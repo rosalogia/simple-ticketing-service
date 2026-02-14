@@ -25,6 +25,9 @@ DISCORD_REDIRECT_URI_MOBILE = os.getenv(
 # Railway Postgres addon may provide postgres:// which SQLAlchemy doesn't accept
 _raw_db_url = os.getenv("DATABASE_URL", "sqlite:///./sts.db")
 DATABASE_URL = _raw_db_url.replace("postgres://", "postgresql://", 1) if _raw_db_url.startswith("postgres://") else _raw_db_url
+FIREBASE_CREDENTIALS_JSON = os.getenv("FIREBASE_CREDENTIALS_JSON") or None
+FCM_ENABLED = os.getenv("FCM_ENABLED", "false").lower() in ("true", "1", "yes")
+
 ALLOWED_ORIGINS = [
     o.strip()
     for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")

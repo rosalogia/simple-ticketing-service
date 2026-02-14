@@ -217,6 +217,16 @@ export default function QueueSettingsScreen({route, navigation}: Props) {
         ))}
       </View>
 
+      {/* Paging Settings */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Paging</Text>
+        <TouchableOpacity
+          style={styles.syncButton}
+          onPress={() => (navigation as any).navigate('PageableHours', {queueId})}>
+          <Text style={styles.syncButtonText}>My Paging Settings</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Discord sync */}
       {queue.discord_guild_id && (
         <View style={styles.section}>

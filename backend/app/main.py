@@ -10,11 +10,13 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from .config import ALLOWED_ORIGINS, DEBUG
+from .config import ALLOWED_ORIGINS, DEBUG, FCM_ENABLED
 from .database import SessionLocal, engine
+from .fcm import init_fcm
 from .models import User
 from .ratelimit import limiter
-from .routers import auth, categories, comments, queues, tickets, users
+from .routers import auth, categories, comments, devices, queues, settings, tickets, users
+from .scheduler import start_scheduler, stop_scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,16 @@ async def lifespan(app: FastAPI):
             logger.error("Auto-seed failed: %s", exc)
             db.close()
 
+    # Initialize FCM
+    if FCM_ENABLED:
+        init_fcm()
+
+    start_scheduler()
+
     yield
+
+    # Shutdown scheduler
+    stop_scheduler()
 
 
 app = FastAPI(
@@ -79,6 +90,8 @@ app.include_router(queues.router, prefix="/api/queues", tags=["queues"])
 app.include_router(tickets.router, prefix="/api/tickets", tags=["tickets"])
 app.include_router(comments.router, prefix="/api/tickets", tags=["comments"])
 app.include_router(categories.router, prefix="/api/categories", tags=["categories"])
+app.include_router(devices.router, prefix="/api/devices", tags=["devices"])
+app.include_router(settings.router, prefix="/api/queues", tags=["settings"])
 
 
 @app.exception_handler(Exception)

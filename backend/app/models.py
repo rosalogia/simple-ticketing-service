@@ -5,7 +5,7 @@ import secrets
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -164,3 +164,62 @@ class Session(Base):
     expires_at: Mapped[datetime] = mapped_column()
 
     user: Mapped[User] = relationship()
+
+
+class DeviceToken(Base):
+    __tablename__ = "device_tokens"
+    __table_args__ = (
+        UniqueConstraint("user_id", "token", name="uq_user_token"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token: Mapped[str] = mapped_column(String(500))
+    platform: Mapped[str] = mapped_column(String(10))  # "android" or "ios"
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
+
+    user: Mapped[User] = relationship()
+
+
+class UserQueueSettings(Base):
+    __tablename__ = "user_queue_settings"
+    __table_args__ = (
+        UniqueConstraint("user_id", "queue_id", name="uq_user_queue_settings"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    queue_id: Mapped[int] = mapped_column(ForeignKey("queues.id", ondelete="CASCADE"), index=True)
+    pageable_start: Mapped[str] = mapped_column(String(5), default="09:00")
+    pageable_end: Mapped[str] = mapped_column(String(5), default="17:00")
+    timezone: Mapped[str] = mapped_column(String(50), default="America/New_York")
+    sev1_off_hours_opt_out: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    user: Mapped[User] = relationship()
+    queue: Mapped[Queue] = relationship()
+
+
+class PageTracking(Base):
+    __tablename__ = "page_tracking"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), unique=True)
+    last_page_sent_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    acknowledged_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    acknowledged_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+    ticket: Mapped[Ticket] = relationship()
+
+
+class EscalationTracking(Base):
+    __tablename__ = "escalation_tracking"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), unique=True)
+    original_priority: Mapped[TicketPriority] = mapped_column()
+    last_escalation_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    escalation_count: Mapped[int] = mapped_column(Integer, default=0)
+    paused: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    ticket: Mapped[Ticket] = relationship()

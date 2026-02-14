@@ -177,3 +177,33 @@ class CategoriesResponse(BaseModel):
     categories: list[str]
     types: list[str]
     items: list[str]
+
+
+# ── Device Tokens ─────────────────────────────────────────────────────
+
+
+class DeviceTokenCreate(BaseModel):
+    token: str = Field(..., min_length=1, max_length=500)
+    platform: str = Field(..., pattern="^(android|ios)$")
+
+
+# ── User Queue Settings ──────────────────────────────────────────────
+
+
+class UserQueueSettingsUpdate(BaseModel):
+    pageable_start: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
+    pageable_end: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
+    timezone: Optional[str] = Field(None, max_length=50)
+    sev1_off_hours_opt_out: Optional[bool] = None
+
+
+class UserQueueSettingsResponse(BaseModel):
+    id: int
+    user_id: int
+    queue_id: int
+    pageable_start: str
+    pageable_end: str
+    timezone: str
+    sev1_off_hours_opt_out: bool
+
+    model_config = ConfigDict(from_attributes=True)

@@ -96,6 +96,16 @@ export interface CategoriesResponse {
   items: string[];
 }
 
+export interface UserQueueSettings {
+  id: number;
+  user_id: number;
+  queue_id: number;
+  pageable_start: string;
+  pageable_end: string;
+  timezone: string;
+  sev1_off_hours_opt_out: boolean;
+}
+
 export interface TicketFilters {
   queue_id?: number;
   status?: TicketStatus[];

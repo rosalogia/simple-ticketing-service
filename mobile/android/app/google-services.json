@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "661927977746",
+    "project_id": "simple-ticketing-service-a92a7",
+    "storage_bucket": "simple-ticketing-service-a92a7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:661927977746:android:f35f77d8c012f954bf89cb",
+        "android_client_info": {
+          "package_name": "com.stsmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqDAgKiq3v6pjJTe4mnoqXhgQzE7tbH2U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,10 +1,13 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {ActivityIndicator, View} from 'react-native';
-import {NavigationContainer} from '@react-navigation/native';
+import {NavigationContainer, createNavigationContainerRef} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import messaging from '@react-native-firebase/messaging';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useAuth} from '../auth/AuthContext';
+import {handleRemoteMessage} from '../notifications/messageHandler';
+import {setupNotificationActionHandler} from '../notifications/actionHandler';
 import {colors, fontSize, fontWeight} from '../theme';
 
 import LoginScreen from '../screens/LoginScreen';
@@ -14,6 +17,9 @@ import TicketDetailScreen from '../screens/TicketDetailScreen';
 import CreateTicketScreen from '../screens/CreateTicketScreen';
 import QueueSettingsScreen from '../screens/QueueSettingsScreen';
 import CreateQueueScreen from '../screens/CreateQueueScreen';
+import PageableHoursScreen from '../screens/PageableHoursScreen';
+
+export const navigationRef = createNavigationContainerRef();
 
 // ── Type definitions ──────────────────────────────────────────────────
 
@@ -32,6 +38,7 @@ export type HomeStackParamList = {
 export type SettingsStackParamList = {
   QueueSettings: {queueId: number};
   CreateQueue: undefined;
+  PageableHours: {queueId: number};
 };
 
 // ── Stacks ────────────────────────────────────────────────────────────
@@ -90,6 +97,11 @@ function SettingsStackNavigator({queueId}: {queueId: number}) {
         component={CreateQueueScreen}
         options={{title: 'New Queue'}}
       />
+      <SettingsStack.Screen
+        name="PageableHours"
+        component={PageableHoursScreen}
+        options={{title: 'Paging Settings'}}
+      />
     </SettingsStack.Navigator>
   );
 }
@@ -143,6 +155,13 @@ function MainTabNavigator({route}: {route: {params: {queueId: number}}}) {
 export default function AppNavigator() {
   const {isLoading, isAuthenticated} = useAuth();
 
+  // Setup foreground message handler and notification action handler
+  useEffect(() => {
+    const unsubscribe = messaging().onMessage(handleRemoteMessage);
+    setupNotificationActionHandler();
+    return unsubscribe;
+  }, []);
+
   if (isLoading) {
     return (
       <View
@@ -153,7 +172,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <RootStack.Navigator screenOptions={{headerShown: false}}>
         {!isAuthenticated ? (
           <RootStack.Screen name="Login" component={LoginScreen} />

@@ -9,6 +9,8 @@ import React, {
 import {Linking} from 'react-native';
 import * as Keychain from 'react-native-keychain';
 import {authApi, setToken, setOnSessionExpired} from '../api/client';
+import {createNotificationChannels} from '../notifications/channels';
+import {registerDeviceToken, unregisterDeviceToken} from '../notifications/tokenManager';
 import type {User} from '../types';
 
 interface AuthState {
@@ -53,6 +55,15 @@ export function AuthProvider({children}: {children: ReactNode}) {
     discordClientId: null,
   });
 
+  const setupNotifications = useCallback(async () => {
+    try {
+      await createNotificationChannels();
+      await registerDeviceToken();
+    } catch (err) {
+      console.error('Failed to setup notifications:', err);
+    }
+  }, []);
+
   const resetAuth = useCallback(() => {
     setToken(null);
     clearStoredToken();
@@ -89,6 +100,7 @@ export function AuthProvider({children}: {children: ReactNode}) {
                 user: status.user,
                 isLoading: false,
               }));
+              setupNotifications();
             } else {
               resetAuth();
             }
@@ -106,7 +118,7 @@ export function AuthProvider({children}: {children: ReactNode}) {
     });
 
     return () => sub.remove();
-  }, [resetAuth]);
+  }, [resetAuth, setupNotifications]);
 
   // Bootstrap: load token from keychain and check auth status
   useEffect(() => {
@@ -124,6 +136,7 @@ export function AuthProvider({children}: {children: ReactNode}) {
               devMode: status.dev_mode,
               discordClientId: status.discord_client_id,
             });
+            setupNotifications();
             return;
           }
         }
@@ -156,9 +169,15 @@ export function AuthProvider({children}: {children: ReactNode}) {
       isAuthenticated: true,
       user: result.user,
     }));
-  }, []);
+    setupNotifications();
+  }, [setupNotifications]);
 
   const logout = useCallback(async () => {
+    try {
+      await unregisterDeviceToken();
+    } catch {
+      // ignore
+    }
     try {
       await authApi.logout();
     } catch {
