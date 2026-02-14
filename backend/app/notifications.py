@@ -73,15 +73,21 @@ def notify_status_changed(db: Session, ticket: Ticket, changed_by_id: int) -> No
     )
 
 
-def notify_comment_added(db: Session, ticket: Ticket, commenter_id: int) -> None:
+def notify_comment_added(
+    db: Session, ticket: Ticket, commenter_id: int, comment_body: str,
+) -> None:
     """Notify assigner and assignee on comments (excluding own)."""
+    from .models import User
+    commenter = db.query(User).filter(User.id == commenter_id).first()
+    commenter_name = commenter.display_name if commenter else "Someone"
+    preview = comment_body[:100] + ("..." if len(comment_body) > 100 else "")
     data = {"type": "comment_added", "ticket_id": str(ticket.id)}
     recipients = {ticket.assigner_id, ticket.assignee_id} - {commenter_id}
     for user_id in recipients:
         _send_to_user(
             db, user_id,
-            "New Comment",
-            f"New comment on: {ticket.title}",
+            f"Comment on: {ticket.title}",
+            f"{commenter_name}: {preview}",
             data,
         )
 

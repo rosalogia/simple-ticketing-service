@@ -70,7 +70,7 @@ def create_comment(
     # Notify assigner and assignee about new comment
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if ticket:
-        notify_comment_added(db, ticket, current_user_id)
+        notify_comment_added(db, ticket, current_user_id, payload.content)
 
     comment = (
         db.query(Comment)
