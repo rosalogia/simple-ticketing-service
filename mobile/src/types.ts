@@ -65,6 +65,10 @@ export interface Ticket {
   created_at: string;
   updated_at: string;
   comment_count: number;
+  next_escalation_at: string | null;
+  next_page_at: string | null;
+  escalation_paused: boolean;
+  page_acknowledged: boolean;
 }
 
 export interface TicketListResponse {

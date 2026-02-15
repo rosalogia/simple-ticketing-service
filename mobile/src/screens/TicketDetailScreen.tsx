@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {useAuth} from '../auth/AuthContext';
 import type {Ticket, Comment, QueueMember} from '../types';
 import type {HomeStackParamList} from '../navigation/AppNavigator';
 import CommentThread from '../components/CommentThread';
-import InfoButton, {PriorityHelpContent} from '../components/InfoButton';
+import InfoButton, {PriorityHelpContent, EscalationHelpContent, PagingHelpContent} from '../components/InfoButton';
 import {
   colors,
   spacing,
@@ -31,6 +31,43 @@ import {queueApi} from '../api/client';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'TicketDetail'>;
 
+function formatCountdown(diffMs: number): string {
+  if (diffMs <= 0) return 'Any moment';
+  const totalSec = Math.floor(diffMs / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  if (days > 0) return `${days}d ${hours}h ${mins}m`;
+  if (hours > 0) return `${hours}h ${mins}m ${secs}s`;
+  if (mins > 0) return `${mins}m ${secs}s`;
+  return `${secs}s`;
+}
+
+function useCountdown(targetIso: string | null): string | null {
+  const targetMs = useMemo(
+    () => (targetIso ? new Date(targetIso).getTime() : null),
+    [targetIso],
+  );
+  const [display, setDisplay] = useState<string | null>(() => {
+    if (targetMs === null) return null;
+    return formatCountdown(targetMs - Date.now());
+  });
+
+  useEffect(() => {
+    if (targetMs === null) {
+      setDisplay(null);
+      return;
+    }
+    const tick = () => setDisplay(formatCountdown(targetMs - Date.now()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetMs]);
+
+  return display;
+}
+
 export default function TicketDetailScreen({route, navigation}: Props) {
   const {user} = useAuth();
   const {ticketId} = route.params;
@@ -42,6 +79,9 @@ export default function TicketDetailScreen({route, navigation}: Props) {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const escalationCountdown = useCountdown(ticket?.next_escalation_at ?? null);
+  const pageCountdown = useCountdown(ticket?.next_page_at ?? null);
 
   const loadTicket = useCallback(async () => {
     try {
@@ -246,6 +286,44 @@ export default function TicketDetailScreen({route, navigation}: Props) {
             </Text>
           </MetaRow>
         )}
+        {(escalationCountdown !== null || ticket.escalation_paused) && (
+          <MetaRow label="Next Escalation">
+            <View style={styles.countdownRow}>
+              {ticket.escalation_paused ? (
+                <Text style={styles.countdownPaused}>Paused</Text>
+              ) : (
+                <Text style={styles.countdownEscalation}>
+                  {escalationCountdown}
+                </Text>
+              )}
+              <InfoButton>
+                <EscalationHelpContent />
+              </InfoButton>
+            </View>
+          </MetaRow>
+        )}
+        {pageCountdown !== null && (
+          <MetaRow label="Next Page">
+            <View style={styles.countdownRow}>
+              <Text
+                style={[
+                  styles.countdownPage,
+                  {
+                    color:
+                      ticket.priority === 'SEV1' ? colors.sev1 : colors.sev2,
+                  },
+                ]}>
+                {pageCountdown}
+              </Text>
+              {ticket.page_acknowledged && (
+                <Text style={styles.countdownAcked}>(Acked)</Text>
+              )}
+              <InfoButton>
+                <PagingHelpContent />
+              </InfoButton>
+            </View>
+          </MetaRow>
+        )}
         {ticket.category && (
           <MetaRow label="Category">
             <Text style={styles.metaValue}>{ticket.category}</Text>
@@ -431,6 +509,31 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.ink,
     fontWeight: fontWeight.medium,
+  },
+  countdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  countdownEscalation: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.statusProgress, // amber
+    fontVariant: ['tabular-nums'],
+  },
+  countdownPage: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    fontVariant: ['tabular-nums'],
+  },
+  countdownPaused: {
+    fontSize: fontSize.sm,
+    fontStyle: 'italic',
+    color: colors.stone400,
+  },
+  countdownAcked: {
+    fontSize: fontSize.xs,
+    color: colors.stone400,
   },
   statusActions: {
     flexDirection: 'row',

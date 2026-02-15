@@ -25,6 +25,15 @@ type Tab = 'to_me' | 'by_me';
 
 const PAGE_SIZE = 20;
 
+const DEFAULT_STATUS: TicketStatus[] = ['OPEN', 'IN_PROGRESS', 'BLOCKED'];
+
+const STAT_TO_STATUS: Record<string, TicketStatus> = {
+  open_count: 'OPEN',
+  in_progress_count: 'IN_PROGRESS',
+  blocked_count: 'BLOCKED',
+  completed_count: 'COMPLETED',
+};
+
 export default function DashboardScreen({navigation, route}: Props) {
   const {user} = useAuth();
   const queueId = route.params.queueId;
@@ -36,8 +45,9 @@ export default function DashboardScreen({navigation, route}: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [filterVisible, setFilterVisible] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<TicketStatus[]>([]);
+  const [statusFilter, setStatusFilter] = useState<TicketStatus[]>(DEFAULT_STATUS);
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority[]>([]);
+  const [dueBefore, setDueBefore] = useState<string | undefined>(undefined);
   const [loadingMore, setLoadingMore] = useState(false);
 
   const ticketsRef = useRef<Ticket[]>([]);
@@ -54,6 +64,7 @@ export default function DashboardScreen({navigation, route}: Props) {
           search: search || undefined,
           status: statusFilter.length ? statusFilter : undefined,
           priority: priorityFilter.length ? priorityFilter : undefined,
+          due_before: dueBefore,
           skip: 0,
           limit: PAGE_SIZE,
         }),
@@ -69,7 +80,7 @@ export default function DashboardScreen({navigation, route}: Props) {
     } catch (e) {
       console.warn('loadData error', e);
     }
-  }, [queueId, user, tab, search, statusFilter, priorityFilter]);
+  }, [queueId, user, tab, search, statusFilter, priorityFilter, dueBefore]);
 
   // Load on mount and when filters change
   useEffect(() => {
@@ -100,6 +111,7 @@ export default function DashboardScreen({navigation, route}: Props) {
         search: search || undefined,
         status: statusFilter.length ? statusFilter : undefined,
         priority: priorityFilter.length ? priorityFilter : undefined,
+        due_before: dueBefore,
         skip: ticketsRef.current.length,
         limit: PAGE_SIZE,
       });
@@ -109,12 +121,60 @@ export default function DashboardScreen({navigation, route}: Props) {
     setLoadingMore(false);
   };
 
-  const handleFilterApply = (f: {status: TicketStatus[]; priority: TicketPriority[]}) => {
-    setStatusFilter(f.status);
-    setPriorityFilter(f.priority);
+  const handleTabChange = (newTab: Tab) => {
+    setTab(newTab);
+    setStatusFilter(DEFAULT_STATUS);
+    setPriorityFilter([]);
+    setDueBefore(undefined);
   };
 
-  const activeFilterCount = statusFilter.length + priorityFilter.length;
+  const handleFilterApply = (f: {status: TicketStatus[]; priority: TicketPriority[]}) => {
+    setStatusFilter(f.status.length ? f.status : DEFAULT_STATUS);
+    setPriorityFilter(f.priority);
+    setDueBefore(undefined);
+  };
+
+  const activeStatKey = useMemo(() => {
+    if (dueBefore) return 'overdue_count';
+    if (statusFilter.length === 1) {
+      const entry = Object.entries(STAT_TO_STATUS).find(
+        ([, v]) => v === statusFilter[0],
+      );
+      return entry ? entry[0] : null;
+    }
+    return null;
+  }, [statusFilter, dueBefore]);
+
+  const handleStatPress = useCallback(
+    (key: string) => {
+      if (activeStatKey === key) {
+        // Toggle off — return to default
+        setStatusFilter(DEFAULT_STATUS);
+        setPriorityFilter([]);
+        setDueBefore(undefined);
+        return;
+      }
+      if (key === 'overdue_count') {
+        const today = new Date().toISOString().split('T')[0];
+        setStatusFilter(DEFAULT_STATUS);
+        setPriorityFilter([]);
+        setDueBefore(today);
+        return;
+      }
+      const status = STAT_TO_STATUS[key];
+      if (status) {
+        setStatusFilter([status]);
+        setPriorityFilter([]);
+        setDueBefore(undefined);
+      }
+    },
+    [activeStatKey],
+  );
+
+  const activeFilterCount =
+    (statusFilter.length && statusFilter.length !== DEFAULT_STATUS.length
+      ? statusFilter.length
+      : 0) + priorityFilter.length;
 
   const header = useMemo(
     () => (
@@ -123,7 +183,7 @@ export default function DashboardScreen({navigation, route}: Props) {
         <View style={styles.tabs}>
           <TouchableOpacity
             style={[styles.tab, tab === 'to_me' && styles.tabActive]}
-            onPress={() => setTab('to_me')}>
+            onPress={() => handleTabChange('to_me')}>
             <Text
               style={[styles.tabText, tab === 'to_me' && styles.tabTextActive]}>
               To Me
@@ -131,7 +191,7 @@ export default function DashboardScreen({navigation, route}: Props) {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, tab === 'by_me' && styles.tabActive]}
-            onPress={() => setTab('by_me')}>
+            onPress={() => handleTabChange('by_me')}>
             <Text
               style={[styles.tabText, tab === 'by_me' && styles.tabTextActive]}>
               By Me
@@ -139,7 +199,7 @@ export default function DashboardScreen({navigation, route}: Props) {
           </TouchableOpacity>
         </View>
 
-        <StatsRow stats={stats} />
+        <StatsRow stats={stats} onStatPress={handleStatPress} activeKey={activeStatKey} />
 
         {/* Search + filter */}
         <View style={styles.searchRow}>
@@ -162,7 +222,7 @@ export default function DashboardScreen({navigation, route}: Props) {
         </View>
       </View>
     ),
-    [tab, stats, search, activeFilterCount, loadData],
+    [tab, stats, search, activeFilterCount, loadData, handleStatPress, activeStatKey, handleTabChange],
   );
 
   return (

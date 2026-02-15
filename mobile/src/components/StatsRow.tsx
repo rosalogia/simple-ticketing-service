@@ -1,10 +1,12 @@
 import React from 'react';
-import {View, Text, StyleSheet, ScrollView} from 'react-native';
+import {Text, StyleSheet, ScrollView, TouchableOpacity} from 'react-native';
 import type {TicketStats} from '../types';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '../theme';
 
 interface Props {
   stats: TicketStats | null;
+  onStatPress?: (key: string) => void;
+  activeKey?: string | null;
 }
 
 const statItems = [
@@ -15,7 +17,7 @@ const statItems = [
   {key: 'overdue_count' as const, label: 'Overdue', color: colors.sev1, bg: colors.sev1Bg},
 ];
 
-export default function StatsRow({stats}: Props) {
+export default function StatsRow({stats, onStatPress, activeKey}: Props) {
   if (!stats) return null;
 
   return (
@@ -23,14 +25,26 @@ export default function StatsRow({stats}: Props) {
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}>
-      {statItems.map(item => (
-        <View key={item.key} style={[styles.stat, {backgroundColor: item.bg}]}>
-          <Text style={[styles.count, {color: item.color}]}>
-            {stats[item.key]}
-          </Text>
-          <Text style={[styles.label, {color: item.color}]}>{item.label}</Text>
-        </View>
-      ))}
+      {statItems.map(item => {
+        const isActive = activeKey === item.key;
+        return (
+          <TouchableOpacity
+            key={item.key}
+            style={[
+              styles.stat,
+              {backgroundColor: item.bg},
+              isActive && styles.statActive,
+              isActive && {borderColor: item.color},
+            ]}
+            onPress={() => onStatPress?.(item.key)}
+            activeOpacity={0.7}>
+            <Text style={[styles.count, {color: item.color}]}>
+              {stats[item.key]}
+            </Text>
+            <Text style={[styles.label, {color: item.color}]}>{item.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
     </ScrollView>
   );
 }
@@ -47,6 +61,11 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     alignItems: 'center',
     minWidth: 70,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  statActive: {
+    borderWidth: 2,
   },
   count: {
     fontSize: fontSize.xl,
