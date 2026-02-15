@@ -8,6 +8,7 @@ import {
   StatusBar,
   Animated,
   Platform,
+  NativeModules,
 } from 'react-native';
 import notifee from '@notifee/react-native';
 import Sound from 'react-native-sound';
@@ -16,12 +17,15 @@ import {api} from '../api/client';
 import type {RootStackParamList} from '../navigation/AppNavigator';
 import {navigationRef} from '../navigation/AppNavigator';
 
+const {SirenPlayer} = NativeModules;
+
 type Props = NativeStackScreenProps<RootStackParamList, 'PageAlert'>;
 
 export default function PageAlertScreen({route, navigation}: Props) {
   const {ticketId, title, priority, status, notificationId, pageSoundEnabled = true, pageVolume = 100} = route.params;
   const [acknowledging, setAcknowledging] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  // iOS fallback: react-native-sound (relative to system volume)
   const soundRef = useRef<Sound | null>(null);
   const soundReleasedRef = useRef(false);
 
@@ -72,12 +76,18 @@ export default function PageAlertScreen({route, navigation}: Props) {
   useEffect(() => {
     if (!pageSoundEnabled) return;
 
+    if (Platform.OS === 'android' && SirenPlayer) {
+      // Android: native module plays on STREAM_ALARM for absolute volume control
+      SirenPlayer.play(pageVolume);
+      return () => {
+        SirenPlayer.stop();
+      };
+    }
+
+    // iOS fallback: react-native-sound (relative to system volume)
     soundReleasedRef.current = false;
     Sound.setCategory('Playback');
-    // Android res/raw resources use name without extension
-    const filename = Platform.OS === 'android' ? 'siren' : 'siren.mp3';
-    const siren = new Sound(filename, Sound.MAIN_BUNDLE, err => {
-      // Guard against sound released before loading completed
+    const siren = new Sound('siren.mp3', Sound.MAIN_BUNDLE, err => {
       if (err || soundReleasedRef.current) return;
       siren.setVolume(pageVolume / 100);
       siren.setNumberOfLoops(-1);
@@ -88,7 +98,6 @@ export default function PageAlertScreen({route, navigation}: Props) {
     return () => {
       if (soundRef.current === siren) {
         soundReleasedRef.current = true;
-        // release() alone is safe in any MediaPlayer state; stop() is not
         siren.release();
         soundRef.current = null;
       }
@@ -96,6 +105,10 @@ export default function PageAlertScreen({route, navigation}: Props) {
   }, [pageSoundEnabled, pageVolume]);
 
   const stopSound = () => {
+    if (Platform.OS === 'android' && SirenPlayer) {
+      SirenPlayer.stop();
+      return;
+    }
     soundReleasedRef.current = true;
     if (soundRef.current) {
       soundRef.current.release();
