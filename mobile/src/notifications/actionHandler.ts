@@ -18,23 +18,38 @@ async function handleNotificationEvent({type, detail}: Event): Promise<void> {
   if (!data) return;
 
   const ticketId = data.ticket_id ? Number(data.ticket_id) : null;
+  const isPage = data.type === 'page';
 
+  // Acknowledge action from notification button
   if (actionId === 'acknowledge' && ticketId) {
     try {
       await api.acknowledgeTicket(ticketId);
-      // Dismiss the notification after acknowledging
       if (detail.notification?.id) {
         await notifee.cancelNotification(detail.notification.id);
       }
     } catch (err) {
       console.error('Failed to acknowledge ticket:', err);
     }
+    return;
   }
 
-  if ((actionId === 'view_ticket' || actionId === 'default') && ticketId) {
-    // Navigate to ticket detail
+  // Page notification pressed (default/fullscreen action) → open full-screen alert
+  if (isPage && (actionId === 'default' || !actionId) && ticketId) {
     if (navigationRef.isReady()) {
-      // Navigate within the home stack to TicketDetail
+      (navigationRef as any).navigate('PageAlert', {
+        ticketId,
+        title: data.title || 'Unknown',
+        priority: data.priority || 'SEV1',
+        status: data.status || 'OPEN',
+        notificationId: detail.notification?.id,
+      });
+    }
+    return;
+  }
+
+  // View ticket action or default press for non-page notifications
+  if ((actionId === 'view_ticket' || actionId === 'default') && ticketId) {
+    if (navigationRef.isReady()) {
       (navigationRef as any).navigate('MainTabs', {
         screen: 'HomeTab',
         params: {

@@ -19,6 +19,7 @@ import CreateTicketScreen from '../screens/CreateTicketScreen';
 import QueueSettingsScreen from '../screens/QueueSettingsScreen';
 import CreateQueueScreen from '../screens/CreateQueueScreen';
 import PageableHoursScreen from '../screens/PageableHoursScreen';
+import PageAlertScreen from '../screens/PageAlertScreen';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -28,6 +29,13 @@ export type RootStackParamList = {
   Login: undefined;
   QueueList: undefined;
   MainTabs: {queueId: number; screen?: string};
+  PageAlert: {
+    ticketId: number;
+    title: string;
+    priority: string;
+    status: string;
+    notificationId?: string;
+  };
 };
 
 export type HomeStackParamList = {
@@ -199,6 +207,15 @@ export default function AppNavigator() {
             <RootStack.Screen
               name="MainTabs"
               component={MainTabNavigator as any}
+            />
+            <RootStack.Screen
+              name="PageAlert"
+              component={PageAlertScreen}
+              options={{
+                headerShown: false,
+                presentation: 'fullScreenModal',
+                animation: 'fade',
+              }}
             />
           </>
         )}

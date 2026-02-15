@@ -1,6 +1,7 @@
 import notifee, {AndroidFlags, AndroidStyle} from '@notifee/react-native';
 import {FirebaseMessagingTypes} from '@react-native-firebase/messaging';
 import {DEFAULT_CHANNEL_ID, PAGE_CHANNEL_ID} from './channels';
+import {navigationRef} from '../navigation/AppNavigator';
 
 export async function handleRemoteMessage(
   message: FirebaseMessagingTypes.RemoteMessage,
@@ -9,8 +10,8 @@ export async function handleRemoteMessage(
   if (!data) return;
 
   if (data.type === 'page') {
-    // Disruptive page — alarm-style notification
-    await notifee.displayNotification({
+    // Display the system notification (for lock-screen / background)
+    const notificationId = await notifee.displayNotification({
       title: `${data.priority} PAGE`,
       body: data.title as string,
       data: data as Record<string, string>,
@@ -41,6 +42,17 @@ export async function handleRemoteMessage(
         },
       },
     });
+
+    // Navigate to full-screen alert if app is in foreground
+    if (navigationRef.isReady()) {
+      (navigationRef as any).navigate('PageAlert', {
+        ticketId: Number(data.ticket_id),
+        title: data.title,
+        priority: data.priority,
+        status: data.status,
+        notificationId,
+      });
+    }
   } else {
     // Standard notification — show via default channel
     const notification = message.notification;
