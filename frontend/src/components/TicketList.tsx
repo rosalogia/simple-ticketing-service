@@ -1,4 +1,5 @@
 import type { Ticket } from "../types";
+import InfoPopover, { PriorityHelp } from "./InfoPopover";
 
 interface Props {
   tickets: Ticket[];
@@ -95,7 +96,10 @@ export default function TicketList({
                 Title
               </th>
               <th className="text-left px-4 py-2.5 text-xs font-semibold text-stone-400 uppercase tracking-wider w-24">
-                Priority
+                <span className="inline-flex items-center gap-1.5">
+                  Priority
+                  <InfoPopover><PriorityHelp /></InfoPopover>
+                </span>
               </th>
               <th className="text-left px-4 py-2.5 text-xs font-semibold text-stone-400 uppercase tracking-wider w-28">
                 Status

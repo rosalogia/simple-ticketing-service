@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import type { TicketFilters, TicketStatus, TicketPriority } from "../types";
+import InfoPopover, { PriorityHelp } from "./InfoPopover";
 
 interface Props {
   filters: TicketFilters;
@@ -165,8 +166,9 @@ export default function FilterSidebar({ filters, defaultFilters, onChange }: Pro
 
         {/* Priority */}
         <div>
-          <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
             Priority
+            <InfoPopover><PriorityHelp /></InfoPopover>
           </h3>
           <div className="flex flex-wrap gap-1.5 lg:flex-col lg:gap-0 lg:space-y-1">
             {PRIORITIES.map((p) => (

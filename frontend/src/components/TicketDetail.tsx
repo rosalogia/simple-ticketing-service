@@ -3,6 +3,7 @@ import type { Ticket, Comment as CommentType, QueueMember, TicketStatus } from "
 import { api, queueApi } from "../api/client";
 import { useToast } from "./Toast";
 import CommentThread from "./CommentThread";
+import InfoPopover, { PriorityHelp, EscalationHelp, PagingHelp } from "./InfoPopover";
 
 interface Props {
   ticketId: number;
@@ -248,6 +249,7 @@ export default function TicketDetail({
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${pMeta.cls}`}>
                       {pMeta.label}
                     </span>
+                    <InfoPopover><PriorityHelp /></InfoPopover>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${sMeta.cls}`}>
                       {sMeta.label}
                     </span>
@@ -314,7 +316,7 @@ export default function TicketDetail({
             {editing && (
               <div className="px-4 sm:px-6 pb-5 border-t border-stone-50 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-stone-500 mb-1">Priority</label>
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-stone-500 mb-1">Priority <InfoPopover><PriorityHelp /></InfoPopover></label>
                   <select
                     value={editData.priority as string}
                     onChange={(e) => setEditData({ ...editData, priority: e.target.value })}
@@ -419,8 +421,9 @@ export default function TicketDetail({
               <div className="space-y-3 pt-3 border-t border-stone-100">
                 {(escalationCountdown !== null || ticket.escalation_paused) && (
                   <div>
-                    <div className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">
                       Next Escalation
+                      <InfoPopover><EscalationHelp /></InfoPopover>
                     </div>
                     {ticket.escalation_paused ? (
                       <div className="text-sm italic text-stone-400">Paused</div>
@@ -433,8 +436,9 @@ export default function TicketDetail({
                 )}
                 {pageCountdown !== null && (
                   <div>
-                    <div className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">
                       Next Page
+                      <InfoPopover><PagingHelp /></InfoPopover>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`text-sm font-semibold font-mono tracking-tight ${ticket.priority === "SEV1" ? "text-sev1" : "text-sev2"}`}>

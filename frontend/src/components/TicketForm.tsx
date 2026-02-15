@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { QueueMember, CategoriesResponse } from "../types";
 import { api, queueApi } from "../api/client";
+import InfoPopover, { PriorityHelp } from "./InfoPopover";
 
 interface Props {
   queueId: number;
@@ -136,8 +137,9 @@ export default function TicketForm({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-ink-light mb-1">
+              <label className="flex items-center gap-1.5 text-sm font-medium text-ink-light mb-1">
                 Priority
+                <InfoPopover><PriorityHelp /></InfoPopover>
               </label>
               <select
                 value={priority}
