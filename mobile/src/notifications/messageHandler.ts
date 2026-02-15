@@ -1,6 +1,6 @@
 import notifee, {AndroidFlags, AndroidStyle} from '@notifee/react-native';
 import {FirebaseMessagingTypes} from '@react-native-firebase/messaging';
-import {DEFAULT_CHANNEL_ID, PAGE_VIBRATE_CHANNEL_ID} from './channels';
+import {DEFAULT_CHANNEL_ID, PAGE_CHANNEL_ID, PAGE_VIBRATE_CHANNEL_ID} from './channels';
 import {navigationRef} from '../navigation/AppNavigator';
 import {getPageSoundSettings} from './pageSettings';
 
@@ -13,10 +13,14 @@ export async function handleRemoteMessage(
   if (data.type === 'page') {
     const pageSettings = await getPageSoundSettings();
 
-    // Use vibrate-only channel; PageAlertScreen handles audio playback with volume
+    // Sound enabled: use siren channel so system plays sound even with screen off.
+    // PageAlertScreen will cancel the notification (stopping system sound) and play
+    // its own audio with volume control when it opens.
+    // Sound disabled: use vibrate-only channel.
     const androidConfig: any = {
-      channelId: PAGE_VIBRATE_CHANNEL_ID,
+      channelId: pageSettings.soundEnabled ? PAGE_CHANNEL_ID : PAGE_VIBRATE_CHANNEL_ID,
       importance: 4, // HIGH
+      ...(pageSettings.soundEnabled && {sound: 'siren'}),
       vibrationPattern: [300, 500, 300, 500, 300, 500],
       flags: [AndroidFlags.FLAG_INSISTENT],
       ongoing: true,

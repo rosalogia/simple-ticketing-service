@@ -23,6 +23,7 @@ export default function PageAlertScreen({route, navigation}: Props) {
   const [acknowledging, setAcknowledging] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const soundRef = useRef<Sound | null>(null);
+  const soundReleasedRef = useRef(false);
 
   const isSev1 = priority === 'SEV1';
   const bgColor = isSev1 ? '#7f1d1d' : '#7c2d12';
@@ -59,18 +60,25 @@ export default function PageAlertScreen({route, navigation}: Props) {
     return () => Vibration.cancel();
   }, []);
 
+  // Cancel the system notification on mount to stop its sound —
+  // PageAlertScreen takes over with its own audio + vibration
+  useEffect(() => {
+    if (notificationId) {
+      notifee.cancelNotification(notificationId);
+    }
+  }, [notificationId]);
+
   // Play siren sound if enabled
   useEffect(() => {
     if (!pageSoundEnabled) return;
 
+    soundReleasedRef.current = false;
     Sound.setCategory('Playback');
     // Android res/raw resources use name without extension
     const filename = Platform.OS === 'android' ? 'siren' : 'siren.mp3';
     const siren = new Sound(filename, Sound.MAIN_BUNDLE, err => {
-      if (err) {
-        console.error('Failed to load siren sound:', err);
-        return;
-      }
+      // Guard against sound released before loading completed
+      if (err || soundReleasedRef.current) return;
       siren.setVolume(pageVolume / 100);
       siren.setNumberOfLoops(-1);
       siren.play();
@@ -78,9 +86,9 @@ export default function PageAlertScreen({route, navigation}: Props) {
     soundRef.current = siren;
 
     return () => {
-      // Only clean up if stopSound() hasn't already released it
       if (soundRef.current === siren) {
-        siren.stop();
+        soundReleasedRef.current = true;
+        // release() alone is safe in any MediaPlayer state; stop() is not
         siren.release();
         soundRef.current = null;
       }
@@ -88,10 +96,29 @@ export default function PageAlertScreen({route, navigation}: Props) {
   }, [pageSoundEnabled, pageVolume]);
 
   const stopSound = () => {
+    soundReleasedRef.current = true;
     if (soundRef.current) {
-      soundRef.current.stop();
       soundRef.current.release();
       soundRef.current = null;
+    }
+  };
+
+  const navigateToTicket = () => {
+    // Preserve queueId from the existing MainTabs route to avoid crash
+    const navState = navigationRef.getRootState();
+    const mainTabsRoute = navState?.routes.find((r: any) => r.name === 'MainTabs');
+    const queueId = (mainTabsRoute?.params as any)?.queueId;
+
+    navigation.goBack();
+    if (navigationRef.isReady() && queueId) {
+      (navigationRef as any).navigate('MainTabs', {
+        queueId,
+        screen: 'HomeTab',
+        params: {
+          screen: 'TicketDetail',
+          params: {ticketId},
+        },
+      });
     }
   };
 
@@ -108,32 +135,13 @@ export default function PageAlertScreen({route, navigation}: Props) {
     } catch (err) {
       console.error('Failed to acknowledge:', err);
     }
-    // Navigate to the ticket
-    navigation.goBack();
-    if (navigationRef.isReady()) {
-      (navigationRef as any).navigate('MainTabs', {
-        screen: 'HomeTab',
-        params: {
-          screen: 'TicketDetail',
-          params: {ticketId},
-        },
-      });
-    }
+    navigateToTicket();
   };
 
   const handleViewTicket = () => {
     Vibration.cancel();
     stopSound();
-    navigation.goBack();
-    if (navigationRef.isReady()) {
-      (navigationRef as any).navigate('MainTabs', {
-        screen: 'HomeTab',
-        params: {
-          screen: 'TicketDetail',
-          params: {ticketId},
-        },
-      });
-    }
+    navigateToTicket();
   };
 
   return (

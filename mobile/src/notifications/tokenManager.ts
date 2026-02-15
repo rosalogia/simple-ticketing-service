@@ -1,4 +1,5 @@
 import messaging from '@react-native-firebase/messaging';
+import notifee from '@notifee/react-native';
 import {Alert, Linking, PermissionsAndroid, Platform} from 'react-native';
 import {deviceApi} from '../api/client';
 
@@ -23,6 +24,17 @@ export async function requestNotificationPermission(): Promise<boolean> {
         ],
       );
       return false;
+    }
+  }
+
+  // Android 14+: full-screen intent permission is required for page alerts
+  // to show over the lock screen
+  if (Platform.OS === 'android' && Platform.Version >= 34) {
+    const fsiSettings = await notifee.getNotificationSettings();
+    if (
+      fsiSettings.android.alarm !== 1 // 1 = ENABLED
+    ) {
+      await notifee.openAlarmPermissionSettings();
     }
   }
 
