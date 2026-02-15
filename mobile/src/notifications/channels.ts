@@ -2,6 +2,7 @@ import notifee, {AndroidImportance, AndroidVisibility} from '@notifee/react-nati
 
 export const DEFAULT_CHANNEL_ID = 'sts_default';
 export const PAGE_CHANNEL_ID = 'sts_page_v3';
+export const PAGE_VIBRATE_CHANNEL_ID = 'sts_page_vibrate';
 
 // Old channel IDs to clean up (Android channels are immutable once created)
 const OLD_CHANNEL_IDS = ['sts_page', 'sts_page_v2'];
@@ -25,6 +26,17 @@ export async function createNotificationChannels(): Promise<void> {
     description: 'Disruptive paging for SEV1/SEV2 incidents',
     importance: AndroidImportance.HIGH,
     sound: 'siren',
+    vibration: true,
+    vibrationPattern: [300, 500, 300, 500, 300, 500],
+    visibility: AndroidVisibility.PUBLIC,
+    bypassDnd: true,
+  });
+
+  await notifee.createChannel({
+    id: PAGE_VIBRATE_CHANNEL_ID,
+    name: 'STS Pages (Vibrate Only)',
+    description: 'Vibrate-only paging for SEV1/SEV2 incidents',
+    importance: AndroidImportance.HIGH,
     vibration: true,
     vibrationPattern: [300, 500, 300, 500, 300, 500],
     visibility: AndroidVisibility.PUBLIC,

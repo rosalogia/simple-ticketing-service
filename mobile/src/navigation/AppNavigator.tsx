@@ -35,6 +35,8 @@ export type RootStackParamList = {
     priority: string;
     status: string;
     notificationId?: string;
+    pageSoundEnabled?: boolean;
+    pageVolume?: number;
   };
 };
 

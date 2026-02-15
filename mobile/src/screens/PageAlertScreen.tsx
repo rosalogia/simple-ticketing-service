@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import notifee from '@notifee/react-native';
+import Sound from 'react-native-sound';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {api} from '../api/client';
 import type {RootStackParamList} from '../navigation/AppNavigator';
@@ -18,9 +19,10 @@ import {navigationRef} from '../navigation/AppNavigator';
 type Props = NativeStackScreenProps<RootStackParamList, 'PageAlert'>;
 
 export default function PageAlertScreen({route, navigation}: Props) {
-  const {ticketId, title, priority, status, notificationId} = route.params;
+  const {ticketId, title, priority, status, notificationId, pageSoundEnabled = true, pageVolume = 100} = route.params;
   const [acknowledging, setAcknowledging] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const soundRef = useRef<Sound | null>(null);
 
   const isSev1 = priority === 'SEV1';
   const bgColor = isSev1 ? '#7f1d1d' : '#7c2d12';
@@ -57,9 +59,41 @@ export default function PageAlertScreen({route, navigation}: Props) {
     return () => Vibration.cancel();
   }, []);
 
+  // Play siren sound if enabled
+  useEffect(() => {
+    if (!pageSoundEnabled) return;
+
+    Sound.setCategory('Playback');
+    const siren = new Sound('siren.mp3', Sound.MAIN_BUNDLE, err => {
+      if (err) {
+        console.error('Failed to load siren sound:', err);
+        return;
+      }
+      siren.setVolume(pageVolume / 100);
+      siren.setNumberOfLoops(-1);
+      siren.play();
+    });
+    soundRef.current = siren;
+
+    return () => {
+      siren.stop();
+      siren.release();
+      soundRef.current = null;
+    };
+  }, [pageSoundEnabled, pageVolume]);
+
+  const stopSound = () => {
+    if (soundRef.current) {
+      soundRef.current.stop();
+      soundRef.current.release();
+      soundRef.current = null;
+    }
+  };
+
   const handleAcknowledge = async () => {
     setAcknowledging(true);
     Vibration.cancel();
+    stopSound();
     try {
       await api.acknowledgeTicket(ticketId);
       // Dismiss the notification
@@ -84,6 +118,7 @@ export default function PageAlertScreen({route, navigation}: Props) {
 
   const handleViewTicket = () => {
     Vibration.cancel();
+    stopSound();
     navigation.goBack();
     if (navigationRef.isReady()) {
       (navigationRef as any).navigate('MainTabs', {

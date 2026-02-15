@@ -9,11 +9,13 @@ import {
   ActivityIndicator,
   Switch,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {settingsApi} from '../api/client';
 import type {UserQueueSettings, WeekSchedule} from '../types';
 import type {SettingsStackParamList} from '../navigation/AppNavigator';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '../theme';
+import {getPageSoundSettings, setPageSoundSettings} from '../notifications/pageSettings';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'PageableHours'>;
 
@@ -70,13 +72,21 @@ export default function PageableHoursScreen({route}: Props) {
   const [expandedPicker, setExpandedPicker] = useState<string | null>(null);
   const [showTzPicker, setShowTzPicker] = useState(false);
 
+  const [pageSoundEnabled, setPageSoundEnabled] = useState(true);
+  const [pageVolume, setPageVolume] = useState(100);
+
   const load = useCallback(async () => {
     try {
-      const s = await settingsApi.getMySettings(queueId);
+      const [s, soundSettings] = await Promise.all([
+        settingsApi.getMySettings(queueId),
+        getPageSoundSettings(),
+      ]);
       setSettings(s);
       setSchedule(s.schedule || DEFAULT_SCHEDULE);
       setTz(s.timezone);
       setOptOut(s.sev1_off_hours_opt_out);
+      setPageSoundEnabled(soundSettings.soundEnabled);
+      setPageVolume(soundSettings.volume);
     } catch (e: any) {
       Alert.alert('Error', e.message);
     } finally {
@@ -277,6 +287,46 @@ export default function PageableHoursScreen({route}: Props) {
         </View>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Page Sound</Text>
+        <Text style={styles.description}>
+          Control how pages alert you on this device. These settings are saved
+          locally and may differ across devices.
+        </Text>
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>Play alarm sound</Text>
+          <Switch
+            value={pageSoundEnabled}
+            onValueChange={val => {
+              setPageSoundEnabled(val);
+              setPageSoundSettings({soundEnabled: val});
+            }}
+            trackColor={{false: colors.stone300, true: colors.accent}}
+            thumbColor={colors.white}
+          />
+        </View>
+        {pageSoundEnabled && (
+          <View style={styles.volumeRow}>
+            <Text style={styles.volumeLabel}>Volume</Text>
+            <Slider
+              style={styles.volumeSlider}
+              minimumValue={0}
+              maximumValue={100}
+              step={1}
+              value={pageVolume}
+              onSlidingComplete={val => {
+                setPageVolume(val);
+                setPageSoundSettings({volume: val});
+              }}
+              minimumTrackTintColor={colors.accent}
+              maximumTrackTintColor={colors.stone300}
+              thumbTintColor={colors.accent}
+            />
+            <Text style={styles.volumeValue}>{pageVolume}%</Text>
+          </View>
+        )}
+      </View>
+
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.saveButton, saving && styles.saveButtonDisabled]}
@@ -428,6 +478,28 @@ const styles = StyleSheet.create({
     color: colors.ink,
     flex: 1,
     marginRight: spacing.md,
+  },
+  volumeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  volumeLabel: {
+    fontSize: fontSize.md,
+    color: colors.ink,
+    width: 55,
+  },
+  volumeSlider: {
+    flex: 1,
+    height: 40,
+  },
+  volumeValue: {
+    fontSize: fontSize.md,
+    color: colors.accent,
+    fontWeight: fontWeight.semibold,
+    width: 42,
+    textAlign: 'right',
   },
   buttonContainer: {
     paddingHorizontal: spacing.lg,

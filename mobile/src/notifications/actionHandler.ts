@@ -1,6 +1,7 @@
 import notifee, {EventType, Event} from '@notifee/react-native';
 import {api} from '../api/client';
 import {navigationRef} from '../navigation/AppNavigator';
+import {getPageSoundSettings} from './pageSettings';
 
 export function setupNotificationActionHandler(): void {
   notifee.onForegroundEvent(handleNotificationEvent);
@@ -35,6 +36,7 @@ async function handleNotificationEvent({type, detail}: Event): Promise<void> {
 
   // Page notification pressed (default/fullscreen action) → open full-screen alert
   if (isPage && (actionId === 'default' || !actionId) && ticketId) {
+    const pageSettings = await getPageSoundSettings();
     if (navigationRef.isReady()) {
       (navigationRef as any).navigate('PageAlert', {
         ticketId,
@@ -42,6 +44,8 @@ async function handleNotificationEvent({type, detail}: Event): Promise<void> {
         priority: data.priority || 'SEV1',
         status: data.status || 'OPEN',
         notificationId: detail.notification?.id,
+        pageSoundEnabled: pageSettings.soundEnabled,
+        pageVolume: pageSettings.volume,
       });
     }
     return;
