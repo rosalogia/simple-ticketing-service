@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { User, Queue } from "../types";
 import UserSwitcher from "./UserSwitcher";
+import UserProfileMenu from "./UserProfileMenu";
 
 interface Props {
   user: User | null;
@@ -99,28 +100,7 @@ export default function Layout({
               onChange={onUserChange}
             />
           ) : user ? (
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              {user.avatar_url ? (
-                <img
-                  src={user.avatar_url}
-                  alt=""
-                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full"
-                />
-              ) : (
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-stone-700 flex items-center justify-center text-stone-300 text-xs sm:text-sm font-medium">
-                  {user.display_name.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <span className="text-stone-200 text-sm font-medium hidden sm:inline">
-                {user.display_name}
-              </span>
-              <button
-                onClick={onLogout}
-                className="text-stone-500 text-xs sm:text-sm hover:text-stone-300 transition-colors cursor-pointer"
-              >
-                Log out
-              </button>
-            </div>
+            <UserProfileMenu user={user} onLogout={onLogout} />
           ) : null}
         </div>
       </header>

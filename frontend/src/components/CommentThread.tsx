@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import type { Comment } from "../types";
 import { api } from "../api/client";
 
@@ -32,6 +33,25 @@ export default function CommentThread({
   const [editContent, setEditContent] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const location = useLocation();
+
+  // Scroll to and highlight anchored comment
+  useEffect(() => {
+    const hash = location.hash;
+    if (!hash) return;
+    const match = hash.match(/^#comment-(\d+)$/);
+    if (!match) return;
+    const commentId = Number(match[1]);
+    const el = document.getElementById(`comment-${commentId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedId(commentId);
+      const timer = setTimeout(() => setHighlightedId(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [location.hash, comments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +107,17 @@ export default function CommentThread({
     }
   };
 
+  const copyCommentLink = async (commentId: number) => {
+    const url = `${window.location.origin}${location.pathname}#comment-${commentId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(commentId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      // Fallback: do nothing
+    }
+  };
+
   return (
     <div>
       <h3 className="text-sm font-semibold text-ink-light mb-4">
@@ -107,11 +138,17 @@ export default function CommentThread({
           {comments.map((comment) => {
             const isOwn = comment.user.id === currentUserId;
             const isEditing = editingId === comment.id;
+            const isHighlighted = highlightedId === comment.id;
 
             return (
               <div
                 key={comment.id}
-                className="bg-paper-warm rounded-xl px-4 py-3 border border-stone-100"
+                id={`comment-${comment.id}`}
+                className={`bg-paper-warm rounded-xl px-4 py-3 border transition-all duration-500 ${
+                  isHighlighted
+                    ? "border-accent ring-2 ring-accent/30"
+                    : "border-stone-100"
+                }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-semibold text-ink-light">
@@ -124,6 +161,13 @@ export default function CommentThread({
                     <span className="text-xs text-stone-400">
                       {formatTimestamp(comment.created_at)}
                     </span>
+                    <button
+                      onClick={() => copyCommentLink(comment.id)}
+                      className="text-xs text-stone-400 hover:text-ink-light transition-colors"
+                      title="Copy link to comment"
+                    >
+                      {copiedId === comment.id ? "Copied!" : "Link"}
+                    </button>
                     {isOwn && !isEditing && (
                       <div className="flex items-center gap-1 ml-1">
                         <button

@@ -1,17 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import type { User, Queue } from "./types";
 import { api, queueApi, setDevModeUserId } from "./api/client";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ToastProvider } from "./components/Toast";
-import Layout from "./components/Layout";
-import Dashboard from "./components/Dashboard";
-import TicketDetail from "./components/TicketDetail";
 import LoginPage from "./components/LoginPage";
 import QueueList from "./components/QueueList";
 import CreateQueue from "./components/CreateQueue";
-import QueueSettings from "./components/QueueSettings";
-
-type View = "queue-list" | "dashboard" | "ticket-detail" | "queue-settings" | "create-queue";
+import {
+  LayoutWrapper,
+  DashboardRoute,
+  TicketDetailRoute,
+  QueueSettingsRoute,
+} from "./routes";
 
 export default function App() {
   return (
@@ -24,13 +25,11 @@ export default function App() {
 }
 
 function AppContent() {
-  const { user, devMode, loading, login, logout, switchDevUser } = useAuth();
+  const { user, devMode, loading, switchDevUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [queues, setQueues] = useState<Queue[]>([]);
-  const [currentQueueId, setCurrentQueueId] = useState<number | null>(null);
-  const [view, setView] = useState<View>("queue-list");
-  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // In dev mode, auto-select first user if none selected
   useEffect(() => {
@@ -44,17 +43,10 @@ function AppContent() {
     try {
       const q = await queueApi.getQueues();
       setQueues(q);
-      // Auto-select if exactly 1 queue
-      if (q.length === 1 && !currentQueueId) {
-        setCurrentQueueId(q[0].id);
-        setView("dashboard");
-      } else if (q.length === 0 || !currentQueueId) {
-        setView("queue-list");
-      }
     } catch (err) {
       console.error(err);
     }
-  }, [currentQueueId]);
+  }, []);
 
   // Fetch user list (needed for dev mode switcher before a user is selected)
   useEffect(() => {
@@ -70,61 +62,28 @@ function AppContent() {
     }
   }, [user, loadQueues]);
 
+  // Auto-redirect: if exactly 1 queue and on /queues list, go to that queue
+  useEffect(() => {
+    if (queues.length === 1 && location.pathname === "/queues") {
+      navigate(`/queues/${queues[0].id}`, { replace: true });
+    }
+  }, [queues, location.pathname, navigate]);
+
   const handleUserChange = useCallback(
     (id: number) => {
       switchDevUser(id);
-      setView("queue-list");
-      setCurrentQueueId(null);
-      setSelectedTicketId(null);
       setQueues([]);
+      navigate("/queues");
     },
-    [switchDevUser]
+    [switchDevUser, navigate]
   );
 
-  const handleSelectQueue = useCallback((id: number) => {
-    setCurrentQueueId(id);
-    setView("dashboard");
-    setRefreshKey((k) => k + 1);
-  }, []);
-
-  const handleSelectTicket = useCallback((id: number) => {
-    setSelectedTicketId(id);
-    setView("ticket-detail");
-  }, []);
-
-  const handleBackToDashboard = useCallback(() => {
-    setView("dashboard");
-    setSelectedTicketId(null);
-    setRefreshKey((k) => k + 1);
-  }, []);
-
-  const handleShowQueues = useCallback(() => {
-    setView("queue-list");
-  }, []);
-
-  const handleShowSettings = useCallback(() => {
-    setView("queue-settings");
-  }, []);
-
-  const handleShowCreateQueue = useCallback(() => {
-    setView("create-queue");
-  }, []);
-
-  const handleQueueCreated = useCallback((queueId: number) => {
-    setCurrentQueueId(queueId);
-    setView("dashboard");
-    loadQueues();
-  }, [loadQueues]);
+  const handleLogout = useAuth().logout;
 
   const handleQueueDeleted = useCallback(() => {
-    setCurrentQueueId(null);
-    setView("queue-list");
     loadQueues();
-  }, [loadQueues]);
-
-  const handleQueueUpdated = useCallback(() => {
-    loadQueues();
-  }, [loadQueues]);
+    navigate("/queues");
+  }, [loadQueues, navigate]);
 
   if (loading) {
     return (
@@ -136,65 +95,71 @@ function AppContent() {
 
   // Not authenticated and not dev mode: show login
   if (!user && !devMode) {
-    return <LoginPage onLogin={login} />;
+    return <LoginPage onLogin={useAuth().login} />;
   }
 
   const currentUserId = user?.id ?? 0;
-  const currentQueue = queues.find((q) => q.id === currentQueueId) ?? null;
 
   return (
-    <Layout
-      user={user}
-      devMode={devMode}
-      users={users}
-      currentUserId={currentUserId}
-      onUserChange={handleUserChange}
-      onLogout={logout}
-      currentQueue={currentQueue}
-      queues={queues}
-      onSwitchQueue={handleSelectQueue}
-      onShowQueues={handleShowQueues}
-      onShowSettings={handleShowSettings}
-    >
-      {view === "queue-list" && (
-        <QueueList
-          queues={queues}
-          onSelectQueue={handleSelectQueue}
-          onCreateQueue={handleShowCreateQueue}
+    <Routes>
+      <Route
+        element={
+          <LayoutWrapper
+            user={user}
+            devMode={devMode}
+            users={users}
+            currentUserId={currentUserId}
+            onUserChange={handleUserChange}
+            onLogout={handleLogout}
+            queues={queues}
+          />
+        }
+      >
+        <Route
+          path="/queues"
+          element={
+            <QueueList
+              queues={queues}
+              onSelectQueue={(id) => navigate(`/queues/${id}`)}
+              onCreateQueue={() => navigate("/queues/new")}
+            />
+          }
         />
-      )}
-      {view === "create-queue" && (
-        <CreateQueue
-          devMode={devMode}
-          onCreated={handleQueueCreated}
-          onCancel={handleShowQueues}
+        <Route
+          path="/queues/new"
+          element={
+            <CreateQueue
+              devMode={devMode}
+              onCreated={(queueId) => {
+                loadQueues();
+                navigate(`/queues/${queueId}`);
+              }}
+              onCancel={() => navigate("/queues")}
+            />
+          }
         />
-      )}
-      {view === "dashboard" && currentQueueId && (
-        <Dashboard
-          key={`${refreshKey}-${currentQueueId}`}
-          currentUserId={currentUserId}
-          queueId={currentQueueId}
-          users={users}
-          onSelectTicket={handleSelectTicket}
+        <Route
+          path="/queues/:queueId"
+          element={
+            <DashboardRoute currentUserId={currentUserId} users={users} />
+          }
         />
-      )}
-      {view === "ticket-detail" && selectedTicketId !== null && (
-        <TicketDetail
-          ticketId={selectedTicketId}
-          currentUserId={currentUserId}
-          onBack={handleBackToDashboard}
+        <Route
+          path="/queues/:queueId/tickets/:ticketId"
+          element={<TicketDetailRoute currentUserId={currentUserId} />}
         />
-      )}
-      {view === "queue-settings" && currentQueueId && (
-        <QueueSettings
-          queueId={currentQueueId}
-          currentUserId={currentUserId}
-          onBack={handleBackToDashboard}
-          onDeleted={handleQueueDeleted}
-          onUpdated={handleQueueUpdated}
+        <Route
+          path="/queues/:queueId/settings"
+          element={
+            <QueueSettingsRoute
+              currentUserId={currentUserId}
+              onDeleted={handleQueueDeleted}
+              onUpdated={loadQueues}
+            />
+          }
         />
-      )}
-    </Layout>
+        <Route path="*" element={<Navigate to="/queues" replace />} />
+      </Route>
+    </Routes>
   );
 }

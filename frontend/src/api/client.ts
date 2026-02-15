@@ -113,6 +113,9 @@ export const api = {
   // Users
   getUsers: () => request<User[]>("/api/users/"),
 
+  updateMe: (data: { display_name?: string }) =>
+    request<User>("/api/users/me", { method: "PATCH", body: JSON.stringify(data) }),
+
   createUser: (data: { username: string; display_name: string }) =>
     request<User>("/api/users/", { method: "POST", body: JSON.stringify(data) }),
 

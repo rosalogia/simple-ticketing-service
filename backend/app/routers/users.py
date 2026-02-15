@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..auth import get_current_user_id, get_optional_user_id
 from ..database import get_db
 from ..models import User
-from ..schemas import UserCreate, UserResponse
+from ..schemas import UserCreate, UserResponse, UserUpdate
 
 router = APIRouter()
 
@@ -27,6 +27,23 @@ def create_user(
         raise HTTPException(409, "Username already exists")
     user = User(**payload.model_dump())
     db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    user = db.query(User).filter(User.id == current_user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    update_data = payload.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user, key, value)
     db.commit()
     db.refresh(user)
     return user

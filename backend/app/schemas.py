@@ -16,6 +16,10 @@ class UserCreate(BaseModel):
     display_name: str = Field(..., min_length=1, max_length=100)
 
 
+class UserUpdate(BaseModel):
+    display_name: Optional[str] = Field(None, min_length=1, max_length=100)
+
+
 class UserResponse(BaseModel):
     id: int
     username: str

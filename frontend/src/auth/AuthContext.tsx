@@ -17,6 +17,7 @@ interface AuthContextValue {
   login: () => Promise<void>;
   logout: () => Promise<void>;
   switchDevUser: (id: number) => void;
+  updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextValue>({
   login: async () => {},
   logout: async () => {},
   switchDevUser: () => {},
+  updateUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -79,9 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [checkAuth]
   );
 
+  const updateUser = useCallback((updated: User) => {
+    setUser(updated);
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ user, devMode, loading, discordClientId, login, logout, switchDevUser }}
+      value={{ user, devMode, loading, discordClientId, login, logout, switchDevUser, updateUser }}
     >
       {children}
     </AuthContext.Provider>
