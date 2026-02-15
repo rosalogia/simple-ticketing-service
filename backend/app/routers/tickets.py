@@ -79,17 +79,20 @@ def _compute_next_escalation_at(
     if ticket.status in (TicketStatus.BLOCKED, TicketStatus.COMPLETED, TicketStatus.CANCELLED):
         return None, True
 
+    if not ticket.due_date:
+        return None, False
+
     tracking = (
         db.query(EscalationTracking)
         .filter(EscalationTracking.ticket_id == ticket.id)
         .first()
     )
-    if not tracking:
-        return None, False
-    if tracking.paused:
+    if tracking and tracking.paused:
         return None, True
-    if not ticket.due_date:
-        return None, False
+
+    # Use tracking values if available, otherwise assume fresh state
+    escalation_count = tracking.escalation_count if tracking else 0
+    last_escalation_at = tracking.last_escalation_at if tracking else None
     # Already at ceiling
     if ticket.priority == TicketPriority.SEV1:
         return None, False
@@ -100,18 +103,18 @@ def _compute_next_escalation_at(
 
     if today > due:
         # After due date: escalate once per day
-        if tracking.last_escalation_at is None:
+        if last_escalation_at is None:
             return now, False
-        last = tracking.last_escalation_at
+        last = last_escalation_at
         if last.tzinfo is None:
             last = last.replace(tzinfo=timezone.utc)
         return last + timedelta(days=1), False
     elif today == due:
         # On due date: escalate once
-        if tracking.last_escalation_at is None or tracking.last_escalation_at.date() < due:
+        if last_escalation_at is None or last_escalation_at.date() < due:
             return now, False
         # Already escalated today → next is tomorrow
-        last = tracking.last_escalation_at
+        last = last_escalation_at
         if last.tzinfo is None:
             last = last.replace(tzinfo=timezone.utc)
         return last + timedelta(days=1), False
@@ -124,7 +127,7 @@ def _compute_next_escalation_at(
             if (due - created_date).days < 7:
                 return None, False
             # Escalate once at the 1-week mark
-            if tracking.escalation_count == 0:
+            if escalation_count == 0:
                 return now, False
             # Already escalated at 1-week mark → next on due date
             return datetime(due.year, due.month, due.day, tzinfo=timezone.utc), False
@@ -484,6 +487,19 @@ def update_ticket(
                 et.paused = True
             else:
                 et.paused = False
+            db.commit()
+
+    # Handle due_date change — ensure escalation tracking exists
+    if "due_date" in update_data and ticket.due_date:
+        et = db.query(EscalationTracking).filter(EscalationTracking.ticket_id == ticket.id).first()
+        if not et:
+            et = EscalationTracking(
+                ticket_id=ticket.id,
+                original_priority=ticket.priority,
+                escalation_count=0,
+                paused=ticket.status in (TicketStatus.BLOCKED, TicketStatus.COMPLETED, TicketStatus.CANCELLED),
+            )
+            db.add(et)
             db.commit()
 
     # Handle priority change — create/remove page tracking as needed
