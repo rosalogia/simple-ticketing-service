@@ -5,7 +5,7 @@ import secrets
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -182,6 +182,17 @@ class DeviceToken(Base):
     user: Mapped[User] = relationship()
 
 
+DEFAULT_SCHEDULE = {
+    "mon": {"start": "09:00", "end": "17:00"},
+    "tue": {"start": "09:00", "end": "17:00"},
+    "wed": {"start": "09:00", "end": "17:00"},
+    "thu": {"start": "09:00", "end": "17:00"},
+    "fri": {"start": "09:00", "end": "17:00"},
+    "sat": {"start": "09:00", "end": "17:00"},
+    "sun": {"start": "09:00", "end": "17:00"},
+}
+
+
 class UserQueueSettings(Base):
     __tablename__ = "user_queue_settings"
     __table_args__ = (
@@ -191,8 +202,7 @@ class UserQueueSettings(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     queue_id: Mapped[int] = mapped_column(ForeignKey("queues.id", ondelete="CASCADE"), index=True)
-    pageable_start: Mapped[str] = mapped_column(String(5), default="09:00")
-    pageable_end: Mapped[str] = mapped_column(String(5), default="17:00")
+    schedule: Mapped[dict] = mapped_column(JSON, default=DEFAULT_SCHEDULE)
     timezone: Mapped[str] = mapped_column(String(50), default="America/New_York")
     sev1_off_hours_opt_out: Mapped[bool] = mapped_column(Boolean, default=False)
 

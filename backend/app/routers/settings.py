@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user_id
 from ..database import get_db
-from ..models import QueueMember, UserQueueSettings
+from ..models import DEFAULT_SCHEDULE, QueueMember, UserQueueSettings
 from ..schemas import UserQueueSettingsResponse, UserQueueSettingsUpdate
 
 router = APIRouter()
@@ -39,8 +39,7 @@ def get_my_queue_settings(
         settings = UserQueueSettings(
             user_id=current_user_id,
             queue_id=queue_id,
-            pageable_start="09:00",
-            pageable_end="17:00",
+            schedule=DEFAULT_SCHEDULE,
             timezone="America/New_York",
             sev1_off_hours_opt_out=False,
         )

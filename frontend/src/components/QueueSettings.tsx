@@ -1,7 +1,41 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Queue, QueueMember, QueueRole, User } from "../types";
+import type { Queue, QueueMember, QueueRole, User, WeekSchedule } from "../types";
 import { queueApi, api } from "../api/client";
 import { useToast } from "./Toast";
+
+const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+const DAY_LABELS: Record<string, string> = {
+  mon: "Monday",
+  tue: "Tuesday",
+  wed: "Wednesday",
+  thu: "Thursday",
+  fri: "Friday",
+  sat: "Saturday",
+  sun: "Sunday",
+};
+const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
+const TIMEZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Anchorage",
+  "Pacific/Honolulu",
+  "Europe/London",
+  "Europe/Paris",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+  "UTC",
+];
+const DEFAULT_SCHEDULE: WeekSchedule = {
+  mon: { start: "09:00", end: "17:00" },
+  tue: { start: "09:00", end: "17:00" },
+  wed: { start: "09:00", end: "17:00" },
+  thu: { start: "09:00", end: "17:00" },
+  fri: { start: "09:00", end: "17:00" },
+  sat: { start: "09:00", end: "17:00" },
+  sun: { start: "09:00", end: "17:00" },
+};
 
 interface Props {
   queueId: number;
@@ -30,6 +64,10 @@ export default function QueueSettings({
   const [addRole, setAddRole] = useState<QueueRole>("MEMBER");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [schedule, setSchedule] = useState<WeekSchedule>(DEFAULT_SCHEDULE);
+  const [settingsTz, setSettingsTz] = useState("America/New_York");
+  const [sev1OptOut, setSev1OptOut] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
   const { showError } = useToast();
 
   const loadData = useCallback(() => {
@@ -41,6 +79,11 @@ export default function QueueSettings({
     });
     queueApi.getMembers(queueId).then(setMembers);
     api.getUsers().then(setAllUsers);
+    queueApi.getMySettings(queueId).then((s) => {
+      setSchedule(s.schedule || DEFAULT_SCHEDULE);
+      setSettingsTz(s.timezone);
+      setSev1OptOut(s.sev1_off_hours_opt_out);
+    }).catch(() => {});
   }, [queueId]);
 
   useEffect(() => {
@@ -101,6 +144,24 @@ export default function QueueSettings({
       onDeleted();
     } catch (err) {
       showError(err instanceof Error ? err.message : "Something went wrong");
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      const updated = await queueApi.updateMySettings(queueId, {
+        schedule,
+        timezone: settingsTz,
+        sev1_off_hours_opt_out: sev1OptOut,
+      });
+      setSchedule(updated.schedule || DEFAULT_SCHEDULE);
+      setSettingsTz(updated.timezone);
+      setSev1OptOut(updated.sev1_off_hours_opt_out);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -249,6 +310,109 @@ export default function QueueSettings({
           </div>
         </div>
       )}
+
+      {/* Pageable Hours */}
+      <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6 mb-4">
+        <h3 className="text-sm font-semibold text-ink mb-1">Your Pageable Hours</h3>
+        <p className="text-xs text-stone-400 mb-4">
+          SEV2 pages are only sent during these hours. Toggle a day off to disable pages that day.
+        </p>
+
+        <div className="space-y-2 mb-4">
+          {DAY_KEYS.map((day) => {
+            const dayConfig = schedule[day];
+            const enabled = !!dayConfig;
+            return (
+              <div key={day} className="flex items-center gap-3 py-1.5">
+                <label className="flex items-center gap-2 w-24">
+                  <input
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={() =>
+                      setSchedule((prev) => ({
+                        ...prev,
+                        [day]: enabled ? null : { start: "09:00", end: "17:00" },
+                      }))
+                    }
+                    className="accent-stone-900"
+                  />
+                  <span className={`text-sm font-medium ${enabled ? "text-ink" : "text-stone-400"}`}>
+                    {DAY_LABELS[day]}
+                  </span>
+                </label>
+                {enabled && (
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={dayConfig!.start}
+                      onChange={(e) =>
+                        setSchedule((prev) => ({
+                          ...prev,
+                          [day]: { ...prev[day]!, start: e.target.value },
+                        }))
+                      }
+                      className="px-2 py-1 text-xs border border-stone-200 rounded-md bg-paper-warm focus:outline-none focus:ring-1 focus:ring-accent/30"
+                    >
+                      {HOURS.map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                    <span className="text-xs text-stone-400">to</span>
+                    <select
+                      value={dayConfig!.end}
+                      onChange={(e) =>
+                        setSchedule((prev) => ({
+                          ...prev,
+                          [day]: { ...prev[day]!, end: e.target.value },
+                        }))
+                      }
+                      className="px-2 py-1 text-xs border border-stone-200 rounded-md bg-paper-warm focus:outline-none focus:ring-1 focus:ring-accent/30"
+                    >
+                      {HOURS.map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="space-y-3 pt-3 border-t border-stone-100">
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-ink-light">Timezone</label>
+            <select
+              value={settingsTz}
+              onChange={(e) => setSettingsTz(e.target.value)}
+              className="px-2.5 py-1.5 text-sm border border-stone-200 rounded-lg bg-paper-warm focus:outline-none focus:ring-1 focus:ring-accent/30"
+            >
+              {TIMEZONES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={sev1OptOut}
+              onChange={(e) => setSev1OptOut(e.target.checked)}
+              className="accent-stone-900"
+            />
+            Disable SEV1 off-hours pages
+          </label>
+        </div>
+
+        <div className="pt-4">
+          <button
+            onClick={handleSaveSettings}
+            disabled={savingSettings}
+            className="px-4 py-1.5 text-sm font-medium text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-40 rounded-lg transition-colors"
+          >
+            {savingSettings ? "Saving..." : "Save Pageable Hours"}
+          </button>
+        </div>
+      </div>
 
       {/* Members */}
       <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6 mb-4">

@@ -276,8 +276,7 @@ export const settingsApi = {
   updateMySettings: (
     queueId: number,
     data: {
-      pageable_start?: string;
-      pageable_end?: string;
+      schedule?: Record<string, { start: string; end: string } | null>;
       timezone?: string;
       sev1_off_hours_opt_out?: boolean;
     },

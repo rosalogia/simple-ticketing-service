@@ -199,8 +199,7 @@ class DeviceTokenCreate(BaseModel):
 
 
 class UserQueueSettingsUpdate(BaseModel):
-    pageable_start: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
-    pageable_end: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
+    schedule: Optional[dict] = None
     timezone: Optional[str] = Field(None, max_length=50)
     sev1_off_hours_opt_out: Optional[bool] = None
 
@@ -209,8 +208,7 @@ class UserQueueSettingsResponse(BaseModel):
     id: int
     user_id: int
     queue_id: int
-    pageable_start: str
-    pageable_end: str
+    schedule: dict
     timezone: str
     sev1_off_hours_opt_out: bool
 

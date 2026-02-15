@@ -100,12 +100,14 @@ export interface CategoriesResponse {
   items: string[];
 }
 
+export type DaySchedule = { start: string; end: string } | null;
+export type WeekSchedule = Record<string, DaySchedule>;
+
 export interface UserQueueSettings {
   id: number;
   user_id: number;
   queue_id: number;
-  pageable_start: string;
-  pageable_end: string;
+  schedule: WeekSchedule;
   timezone: string;
   sev1_off_hours_opt_out: boolean;
 }

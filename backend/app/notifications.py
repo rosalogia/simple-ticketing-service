@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from .fcm import send_notification, send_page
 from .models import (
+    DEFAULT_SCHEDULE,
     DeviceToken,
     Ticket,
     TicketPriority,
@@ -116,13 +117,9 @@ def _is_within_pageable_hours(
         )
         .first()
     )
-    if not settings:
-        # Default: 09:00-17:00 America/New_York
-        start_str, end_str, tz_name = "09:00", "17:00", "America/New_York"
-    else:
-        start_str = settings.pageable_start
-        end_str = settings.pageable_end
-        tz_name = settings.timezone
+
+    schedule = settings.schedule if settings else DEFAULT_SCHEDULE
+    tz_name = settings.timezone if settings else "America/New_York"
 
     try:
         from zoneinfo import ZoneInfo
@@ -133,6 +130,16 @@ def _is_within_pageable_hours(
 
     now = datetime.now(tz)
     current_time = now.time()
+
+    day_keys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    day_key = day_keys[now.weekday()]
+
+    day_config = schedule.get(day_key) if schedule else None
+    if not day_config:
+        return False
+
+    start_str = day_config["start"]
+    end_str = day_config["end"]
 
     start = time(int(start_str[:2]), int(start_str[3:]))
     end = time(int(end_str[:2]), int(end_str[3:]))

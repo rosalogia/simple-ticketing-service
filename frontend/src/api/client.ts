@@ -11,6 +11,8 @@ import type {
   QueueMember,
   QueueRole,
   DiscordServerInfo,
+  UserQueueSettings,
+  WeekSchedule,
 } from "../types";
 
 // In dev mode, this is set by the user switcher.
@@ -107,6 +109,18 @@ export const queueApi = {
 
   syncDiscord: (queueId: number) =>
     request<Queue>(`/api/queues/${queueId}/sync-discord`, { method: "POST" }),
+
+  getMySettings: (queueId: number) =>
+    request<UserQueueSettings>(`/api/queues/${queueId}/my-settings`),
+
+  updateMySettings: (
+    queueId: number,
+    data: { schedule?: WeekSchedule; timezone?: string; sev1_off_hours_opt_out?: boolean },
+  ) =>
+    request<UserQueueSettings>(`/api/queues/${queueId}/my-settings`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 };
 
 export const api = {
