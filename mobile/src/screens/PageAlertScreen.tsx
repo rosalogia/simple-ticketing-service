@@ -64,7 +64,9 @@ export default function PageAlertScreen({route, navigation}: Props) {
     if (!pageSoundEnabled) return;
 
     Sound.setCategory('Playback');
-    const siren = new Sound('siren.mp3', Sound.MAIN_BUNDLE, err => {
+    // Android res/raw resources use name without extension
+    const filename = Platform.OS === 'android' ? 'siren' : 'siren.mp3';
+    const siren = new Sound(filename, Sound.MAIN_BUNDLE, err => {
       if (err) {
         console.error('Failed to load siren sound:', err);
         return;
