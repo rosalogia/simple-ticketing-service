@@ -134,6 +134,10 @@ class TicketResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     comment_count: int = 0
+    next_escalation_at: Optional[datetime] = None
+    next_page_at: Optional[datetime] = None
+    escalation_paused: bool = False
+    page_acknowledged: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

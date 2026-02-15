@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import case, func
@@ -29,6 +29,7 @@ from ..notifications import (
     notify_ticket_reassigned,
     trigger_page_for_ticket,
 )
+from ..scheduler import PAGING_INTERVALS
 from ..schemas import (
     TicketCreate,
     TicketListResponse,
@@ -57,11 +58,112 @@ def _require_ticket_access(db: Session, ticket: Ticket, user_id: int) -> QueueMe
     return _require_queue_membership(db, ticket.queue_id, user_id)
 
 
-def _ticket_to_response(ticket: Ticket, comment_count: int | None = None) -> TicketResponse:
+def _ticket_to_response(
+    ticket: Ticket,
+    comment_count: int | None = None,
+    **extra: object,
+) -> TicketResponse:
     count = comment_count if comment_count is not None else len(ticket.comments)
+    updates: dict[str, object] = {"comment_count": count}
+    updates.update(extra)
     return TicketResponse.model_validate(
         ticket, from_attributes=True
-    ).model_copy(update={"comment_count": count})
+    ).model_copy(update=updates)
+
+
+def _compute_next_escalation_at(
+    db: Session, ticket: Ticket
+) -> tuple[datetime | None, bool]:
+    """Return (next_escalation_at, paused) for a ticket."""
+    # Terminal / blocked → paused
+    if ticket.status in (TicketStatus.BLOCKED, TicketStatus.COMPLETED, TicketStatus.CANCELLED):
+        return None, True
+
+    tracking = (
+        db.query(EscalationTracking)
+        .filter(EscalationTracking.ticket_id == ticket.id)
+        .first()
+    )
+    if not tracking:
+        return None, False
+    if tracking.paused:
+        return None, True
+    if not ticket.due_date:
+        return None, False
+    # Already at ceiling
+    if ticket.priority == TicketPriority.SEV1:
+        return None, False
+
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    due = ticket.due_date
+
+    if today > due:
+        # After due date: escalate once per day
+        if tracking.last_escalation_at is None:
+            return now, False
+        last = tracking.last_escalation_at
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        return last + timedelta(days=1), False
+    elif today == due:
+        # On due date: escalate once
+        if tracking.last_escalation_at is None or tracking.last_escalation_at.date() < due:
+            return now, False
+        # Already escalated today → next is tomorrow
+        last = tracking.last_escalation_at
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        return last + timedelta(days=1), False
+    else:
+        # Before due date
+        days_until_due = (due - today).days
+        if days_until_due <= 7:
+            # Skip if ticket was created less than 1 week from due
+            created_date = ticket.created_at.date() if ticket.created_at else today
+            if (due - created_date).days < 7:
+                return None, False
+            # Escalate once at the 1-week mark
+            if tracking.escalation_count == 0:
+                return now, False
+            # Already escalated at 1-week mark → next on due date
+            return datetime(due.year, due.month, due.day, tzinfo=timezone.utc), False
+        else:
+            # >7 days out → next at due_date - 7 days
+            target = due - timedelta(days=7)
+            return datetime(target.year, target.month, target.day, tzinfo=timezone.utc), False
+
+
+def _compute_next_page_at(
+    db: Session, ticket: Ticket
+) -> tuple[datetime | None, bool]:
+    """Return (next_page_at, acknowledged) for a ticket."""
+    if ticket.priority not in (TicketPriority.SEV1, TicketPriority.SEV2):
+        return None, False
+    if ticket.status not in (TicketStatus.OPEN, TicketStatus.IN_PROGRESS):
+        return None, False
+
+    interval_minutes = PAGING_INTERVALS.get((ticket.priority, ticket.status))
+    if interval_minutes is None:
+        return None, False
+
+    tracking = (
+        db.query(PageTracking)
+        .filter(PageTracking.ticket_id == ticket.id)
+        .first()
+    )
+    if not tracking:
+        return None, False
+
+    acknowledged = tracking.acknowledged_at is not None
+
+    if tracking.last_page_sent_at is not None:
+        last_sent = tracking.last_page_sent_at
+        if last_sent.tzinfo is None:
+            last_sent = last_sent.replace(tzinfo=timezone.utc)
+        return last_sent + timedelta(minutes=interval_minutes), acknowledged
+
+    return None, acknowledged
 
 
 # ── Stats (must be before /{id}) ──────────────────────────────────────
@@ -301,7 +403,17 @@ def get_ticket(
         raise HTTPException(404, "Ticket not found")
 
     _require_ticket_access(db, ticket, current_user_id)
-    return _ticket_to_response(ticket)
+
+    next_esc, esc_paused = _compute_next_escalation_at(db, ticket)
+    next_pg, pg_acked = _compute_next_page_at(db, ticket)
+
+    return _ticket_to_response(
+        ticket,
+        next_escalation_at=next_esc,
+        next_page_at=next_pg,
+        escalation_paused=esc_paused,
+        page_acknowledged=pg_acked,
+    )
 
 
 @router.patch("/{ticket_id}", response_model=TicketResponse)

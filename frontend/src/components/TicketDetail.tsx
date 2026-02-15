@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Ticket, Comment as CommentType, QueueMember, TicketStatus } from "../types";
 import { api, queueApi } from "../api/client";
 import { useToast } from "./Toast";
@@ -73,6 +73,43 @@ function formatDateTime(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function useCountdown(targetIso: string | null): string | null {
+  const targetMs = useMemo(
+    () => (targetIso ? new Date(targetIso).getTime() : null),
+    [targetIso]
+  );
+  const [display, setDisplay] = useState<string | null>(() => {
+    if (targetMs === null) return null;
+    return formatCountdown(targetMs - Date.now());
+  });
+
+  useEffect(() => {
+    if (targetMs === null) {
+      setDisplay(null);
+      return;
+    }
+    const tick = () => setDisplay(formatCountdown(targetMs - Date.now()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetMs]);
+
+  return display;
+}
+
+function formatCountdown(diffMs: number): string {
+  if (diffMs <= 0) return "Any moment";
+  const totalSec = Math.floor(diffMs / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  if (days > 0) return `${days}d ${hours}h ${mins}m`;
+  if (hours > 0) return `${hours}h ${mins}m ${secs}s`;
+  if (mins > 0) return `${mins}m ${secs}s`;
+  return `${secs}s`;
 }
 
 export default function TicketDetail({
@@ -153,6 +190,9 @@ export default function TicketDetail({
       setSaving(false);
     }
   };
+
+  const escalationCountdown = useCountdown(ticket?.next_escalation_at ?? null);
+  const pageCountdown = useCountdown(ticket?.next_page_at ?? null);
 
   if (!ticket) {
     return (
@@ -375,6 +415,39 @@ export default function TicketDetail({
                 )}
               </div>
             </div>
+            {(escalationCountdown !== null || ticket.escalation_paused || pageCountdown !== null) && (
+              <div className="space-y-3 pt-3 border-t border-stone-100">
+                {(escalationCountdown !== null || ticket.escalation_paused) && (
+                  <div>
+                    <div className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">
+                      Next Escalation
+                    </div>
+                    {ticket.escalation_paused ? (
+                      <div className="text-sm italic text-stone-400">Paused</div>
+                    ) : (
+                      <div className="text-sm font-semibold font-mono tracking-tight text-amber-600">
+                        {escalationCountdown}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {pageCountdown !== null && (
+                  <div>
+                    <div className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">
+                      Next Page
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold font-mono tracking-tight ${ticket.priority === "SEV1" ? "text-sev1" : "text-sev2"}`}>
+                        {pageCountdown}
+                      </span>
+                      {ticket.page_acknowledged && (
+                        <span className="text-xs text-stone-400">(Acked)</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {cti && (
               <div>
                 <div className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">
