@@ -241,6 +241,12 @@ export const api = {
   getCategories: (queueId: number) =>
     request<CategoriesResponse>(`/api/categories/?queue_id=${queueId}`),
 
+  escalateTicket: (ticketId: number) =>
+    request<Ticket>(`/api/tickets/${ticketId}/escalate`, {method: 'POST'}),
+
+  pageTicket: (ticketId: number) =>
+    request<Ticket>(`/api/tickets/${ticketId}/page`, {method: 'POST'}),
+
   acknowledgeTicket: (ticketId: number) =>
     request<{status: string}>(`/api/tickets/${ticketId}/acknowledge`, {
       method: 'POST',

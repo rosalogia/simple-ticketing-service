@@ -192,6 +192,12 @@ export const api = {
       method: "DELETE",
     }),
 
+  escalateTicket: (ticketId: number) =>
+    request<Ticket>(`/api/tickets/${ticketId}/escalate`, { method: "POST" }),
+
+  pageTicket: (ticketId: number) =>
+    request<Ticket>(`/api/tickets/${ticketId}/page`, { method: "POST" }),
+
   // Categories
   getCategories: (queueId: number) =>
     request<CategoriesResponse>(`/api/categories/?queue_id=${queueId}`),

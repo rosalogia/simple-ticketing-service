@@ -124,6 +124,8 @@ export default function TicketDetail({
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
+  const [escalating, setEscalating] = useState(false);
+  const [paging, setPaging] = useState(false);
   const { showError } = useToast();
 
   const loadTicket = useCallback(() => {
@@ -432,6 +434,25 @@ export default function TicketDetail({
                         {escalationCountdown}
                       </div>
                     )}
+                    {!ticket.escalation_paused && ticket.priority !== "SEV1" && (
+                      <button
+                        disabled={escalating}
+                        onClick={async () => {
+                          setEscalating(true);
+                          try {
+                            await api.escalateTicket(ticketId);
+                            loadTicket();
+                          } catch (err) {
+                            showError(err instanceof Error ? err.message : "Failed to escalate");
+                          } finally {
+                            setEscalating(false);
+                          }
+                        }}
+                        className="mt-1 px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50"
+                      >
+                        {escalating ? "Escalating…" : "Escalate Now"}
+                      </button>
+                    )}
                   </div>
                 )}
                 {pageCountdown !== null && (
@@ -448,6 +469,23 @@ export default function TicketDetail({
                         <span className="text-xs text-stone-400">(Acked)</span>
                       )}
                     </div>
+                    <button
+                      disabled={paging}
+                      onClick={async () => {
+                        setPaging(true);
+                        try {
+                          await api.pageTicket(ticketId);
+                          loadTicket();
+                        } catch (err) {
+                          showError(err instanceof Error ? err.message : "Failed to page");
+                        } finally {
+                          setPaging(false);
+                        }
+                      }}
+                      className={`mt-1 px-2 py-0.5 text-xs font-medium rounded disabled:opacity-50 ${ticket.priority === "SEV1" ? "bg-sev1-bg text-sev1 hover:bg-red-200" : "bg-sev2-bg text-sev2 hover:bg-orange-200"}`}
+                    >
+                      {paging ? "Paging…" : "Page Now"}
+                    </button>
                   </div>
                 )}
               </div>

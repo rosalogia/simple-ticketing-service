@@ -79,6 +79,8 @@ export default function TicketDetailScreen({route, navigation}: Props) {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [loading, setLoading] = useState(true);
+  const [escalating, setEscalating] = useState(false);
+  const [paging, setPaging] = useState(false);
 
   const escalationCountdown = useCountdown(ticket?.next_escalation_at ?? null);
   const pageCountdown = useCountdown(ticket?.next_page_at ?? null);
@@ -300,6 +302,26 @@ export default function TicketDetailScreen({route, navigation}: Props) {
                 <EscalationHelpContent />
               </InfoButton>
             </View>
+            {!ticket.escalation_paused && ticket.priority !== 'SEV1' && (
+              <TouchableOpacity
+                disabled={escalating}
+                onPress={async () => {
+                  setEscalating(true);
+                  try {
+                    const updated = await api.escalateTicket(ticket.id);
+                    setTicket(updated);
+                  } catch (err: any) {
+                    Alert.alert('Error', err?.message ?? 'Failed to escalate');
+                  } finally {
+                    setEscalating(false);
+                  }
+                }}
+                style={[styles.actionButtonSmall, {backgroundColor: '#fef3c7'}]}>
+                <Text style={[styles.actionButtonSmallText, {color: '#b45309'}]}>
+                  {escalating ? 'Escalating…' : 'Escalate Now'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </MetaRow>
         )}
         {pageCountdown !== null && (
@@ -322,6 +344,31 @@ export default function TicketDetailScreen({route, navigation}: Props) {
                 <PagingHelpContent />
               </InfoButton>
             </View>
+            <TouchableOpacity
+              disabled={paging}
+              onPress={async () => {
+                setPaging(true);
+                try {
+                  const updated = await api.pageTicket(ticket.id);
+                  setTicket(updated);
+                } catch (err: any) {
+                  Alert.alert('Error', err?.message ?? 'Failed to page');
+                } finally {
+                  setPaging(false);
+                }
+              }}
+              style={[
+                styles.actionButtonSmall,
+                {backgroundColor: ticket.priority === 'SEV1' ? '#fee2e2' : '#fff7ed'},
+              ]}>
+              <Text
+                style={[
+                  styles.actionButtonSmallText,
+                  {color: ticket.priority === 'SEV1' ? colors.sev1 : colors.sev2},
+                ]}>
+                {paging ? 'Paging…' : 'Page Now'}
+              </Text>
+            </TouchableOpacity>
           </MetaRow>
         )}
         {ticket.category && (
@@ -557,5 +604,16 @@ const styles = StyleSheet.create({
     color: colors.sev1,
     fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
+  },
+  actionButtonSmall: {
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+    alignSelf: 'flex-start' as const,
+  },
+  actionButtonSmallText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
   },
 });

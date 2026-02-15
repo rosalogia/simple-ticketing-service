@@ -29,7 +29,7 @@ from ..notifications import (
     notify_ticket_reassigned,
     trigger_page_for_ticket,
 )
-from ..scheduler import PAGING_INTERVALS
+from ..scheduler import ESCALATION_LADDER, PAGING_INTERVALS
 from ..schemas import (
     TicketCreate,
     TicketListResponse,
@@ -546,6 +546,109 @@ def acknowledge_ticket(
     pt.acknowledged_by = current_user_id
     db.commit()
     return {"status": "acknowledged"}
+
+
+@router.post("/{ticket_id}/escalate")
+def escalate_ticket(
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(404, "Ticket not found")
+
+    _require_ticket_access(db, ticket, current_user_id)
+
+    if ticket.priority == TicketPriority.SEV1:
+        raise HTTPException(400, "Ticket is already SEV1 — cannot escalate further")
+
+    now = datetime.now(timezone.utc)
+
+    # Get or create escalation tracking
+    et = db.query(EscalationTracking).filter(EscalationTracking.ticket_id == ticket.id).first()
+    if not et:
+        et = EscalationTracking(
+            ticket_id=ticket.id,
+            original_priority=ticket.priority,
+            escalation_count=0,
+            paused=False,
+        )
+        db.add(et)
+        db.flush()
+
+    # Bump priority
+    new_priority = ESCALATION_LADDER[ticket.priority]
+    ticket.priority = new_priority
+    et.last_escalation_at = now
+    et.escalation_count += 1
+    db.commit()
+
+    # If now SEV1/SEV2, create page tracking and trigger page
+    if new_priority in (TicketPriority.SEV1, TicketPriority.SEV2):
+        pt = db.query(PageTracking).filter(PageTracking.ticket_id == ticket.id).first()
+        if not pt:
+            pt = PageTracking(ticket_id=ticket.id, last_page_sent_at=now)
+            db.add(pt)
+            db.commit()
+        if ticket.status in (TicketStatus.OPEN, TicketStatus.IN_PROGRESS):
+            trigger_page_for_ticket(db, ticket)
+
+    ticket = (
+        db.query(Ticket)
+        .options(
+            selectinload(Ticket.assignee),
+            selectinload(Ticket.assigner),
+            selectinload(Ticket.comments),
+        )
+        .filter(Ticket.id == ticket.id)
+        .first()
+    )
+    return _ticket_to_response(ticket)
+
+
+@router.post("/{ticket_id}/page")
+def page_ticket(
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(404, "Ticket not found")
+
+    _require_ticket_access(db, ticket, current_user_id)
+
+    if ticket.priority not in (TicketPriority.SEV1, TicketPriority.SEV2):
+        raise HTTPException(400, "Paging is only available for SEV1/SEV2 tickets")
+
+    if ticket.status not in (TicketStatus.OPEN, TicketStatus.IN_PROGRESS):
+        raise HTTPException(400, "Paging is only available for OPEN or IN_PROGRESS tickets")
+
+    now = datetime.now(timezone.utc)
+
+    trigger_page_for_ticket(db, ticket)
+
+    pt = db.query(PageTracking).filter(PageTracking.ticket_id == ticket.id).first()
+    if pt:
+        pt.last_page_sent_at = now
+        pt.acknowledged_at = None
+    else:
+        pt = PageTracking(ticket_id=ticket.id, last_page_sent_at=now)
+        db.add(pt)
+    db.commit()
+
+    ticket = (
+        db.query(Ticket)
+        .options(
+            selectinload(Ticket.assignee),
+            selectinload(Ticket.assigner),
+            selectinload(Ticket.comments),
+        )
+        .filter(Ticket.id == ticket.id)
+        .first()
+    )
+    return _ticket_to_response(ticket)
 
 
 @router.delete("/{ticket_id}", status_code=204)
