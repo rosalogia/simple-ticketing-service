@@ -10,6 +10,7 @@ frontend/dist/
 mobile/node_modules/
 
 # React Native
+mobile/android/app/release.keystore
 mobile/android/.gradle/
 mobile/android/app/.cxx/
 mobile/android/app/build/
@@ -28,3 +29,7 @@ backend/.env
 
 # OS
 .DS_Store
+
+# Playwright
+*.png
+.playwright-mcp
