@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from .config import ALLOWED_ORIGINS, DEBUG, FCM_ENABLED
+from .config import ALLOWED_ORIGINS, DEBUG, DISCORD_BOT_TOKEN, FCM_ENABLED
 from .database import SessionLocal, engine
 from .fcm import init_fcm
 from .models import User
@@ -59,7 +59,17 @@ async def lifespan(app: FastAPI):
 
     start_scheduler()
 
+    if DISCORD_BOT_TOKEN:
+        from .discord_bot import start_bot
+
+        await start_bot()
+
     yield
+
+    if DISCORD_BOT_TOKEN:
+        from .discord_bot import stop_bot
+
+        await stop_bot()
 
     # Shutdown scheduler
     stop_scheduler()

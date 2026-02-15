@@ -34,6 +34,10 @@ ALLOWED_ORIGINS = [
     if o.strip()
 ]
 
+FRONTEND_URL = os.getenv("FRONTEND_URL") or (
+    ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "http://localhost:5173"
+)
+
 # Validate required config in production
 if not DEBUG:
     _missing = []
