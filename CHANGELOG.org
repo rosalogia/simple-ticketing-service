@@ -1,0 +1,63 @@
+#+TITLE: STS Changelog
+
+* 2026-02-15
+
+** Notification Improvements
+- Enriched all notification types with more context:
+  - Ticket assigned: shows assigner name and priority (e.g. ~[SEV2] Assigned to you~ / ~Alice assigned you: Fix login bug~)
+  - Ticket reassigned: shows old/new assignee names
+  - Status changed: shows who changed it (e.g. ~Bob changed status to IN_PROGRESS~)
+- Re-check notification permission when app returns to foreground (catches manual enable in system settings)
+
+* 2026-02-13
+
+** Push Notifications
+- Added Firebase Cloud Messaging (FCM) integration for push notifications
+- Assignee notified when assigned a ticket
+- Old and new assignees notified on reassignment
+- Assigner notified when ticket status changes
+- Assigner and assignee notified on new comments (shows commenter name and comment preview)
+
+** Disruptive Paging
+- SEV1/SEV2 tickets trigger alarm-style page notifications with continuous vibration
+- Pages vibrate until user interacts (~FLAG_INSISTENT~, ~ongoing~, ~autoCancel: false~)
+- SEV1: pages regardless of hours (opt-out available per user per queue)
+- SEV2: pages only during configured pageable hours
+- Scheduler re-pages on interval (SEV1 OPEN: 15min, SEV1 IN_PROGRESS: 2hr, SEV2 OPEN: 30min, SEV2 IN_PROGRESS: 8hr)
+- Paging stops when ticket is BLOCKED or CLOSED
+- Acknowledge endpoint: ~POST /api/tickets/{id}/acknowledge~
+
+** Ticket Escalation
+- Background job checks due dates every 30 minutes
+- Escalates priority automatically: SEV4 \to SEV3 \to SEV2 \to SEV1 (ceiling)
+- 1 week before due: first escalation (skipped if ticket created <1 week from due)
+- On due date: escalation
+- After due date: daily escalation
+- Escalation pauses when ticket is BLOCKED/CLOSED, resumes on unblock
+- Escalation to SEV1/SEV2 triggers immediate page
+
+** Pageable Hours Settings
+- New screen: configurable start/end time, timezone, and SEV1 off-hours opt-out per queue
+- API: ~GET/PUT /api/queues/{id}/my-settings~
+- Accessible from queue settings screen on mobile
+
+** Device Token Management
+- API: ~POST /api/devices/token~, ~DELETE /api/devices/token~
+- Token registered on login, unregistered on logout, refreshed automatically
+
+** Notification Permission Handling
+- Android 13+ runtime permission prompt (~POST_NOTIFICATIONS~) on login
+- Alert with "Open Settings" shortcut if user permanently denies
+
+** Database
+- New tables: ~device_tokens~, ~user_queue_settings~, ~page_tracking~, ~escalation_tracking~
+- Alembic migration with ~postgresql.ENUM(create_type=False)~ to reuse existing ~ticketpriority~ type
+
+** Mobile Build
+- Release APK signing with dedicated keystore
+- Notification channels: ~sts_default~ (standard) and ~sts_page_v2~ (high importance, bypass DND, vibration)
+- Added ~ACCESS_NOTIFICATION_POLICY~ permission to manifest
+
+** Dependencies
+- Backend: ~firebase-admin~, ~APScheduler~
+- Mobile: ~@react-native-firebase/app~, ~@react-native-firebase/messaging~, ~@notifee/react-native~
