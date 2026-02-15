@@ -1,5 +1,5 @@
-import React, {useEffect} from 'react';
-import {ActivityIndicator, View} from 'react-native';
+import React, {useEffect, useRef} from 'react';
+import {ActivityIndicator, AppState, View} from 'react-native';
 import {NavigationContainer, createNavigationContainerRef} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
@@ -8,6 +8,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useAuth} from '../auth/AuthContext';
 import {handleRemoteMessage} from '../notifications/messageHandler';
 import {setupNotificationActionHandler} from '../notifications/actionHandler';
+import {requestNotificationPermission, registerDeviceToken} from '../notifications/tokenManager';
 import {colors, fontSize, fontWeight} from '../theme';
 
 import LoginScreen from '../screens/LoginScreen';
@@ -161,6 +162,22 @@ export default function AppNavigator() {
     setupNotificationActionHandler();
     return unsubscribe;
   }, []);
+
+  // Re-check notification permission when app returns to foreground
+  const appState = useRef(AppState.currentState);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const sub = AppState.addEventListener('change', nextState => {
+      if (appState.current.match(/background/) && nextState === 'active') {
+        // User may have just enabled notifications in settings
+        requestNotificationPermission().then(granted => {
+          if (granted) registerDeviceToken();
+        });
+      }
+      appState.current = nextState;
+    });
+    return () => sub.remove();
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return (

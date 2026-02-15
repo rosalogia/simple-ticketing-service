@@ -27,15 +27,23 @@ def _send_to_user(db: Session, user_id: int, title: str, body: str, data: dict[s
         send_notification(token, title, body, data)
 
 
+def _get_user_name(db: Session, user_id: int) -> str:
+    from .models import User
+    user = db.query(User).filter(User.id == user_id).first()
+    return user.display_name if user else "Someone"
+
+
 def notify_ticket_assigned(db: Session, ticket: Ticket) -> None:
     """Notify assignee when they are assigned a ticket."""
     if ticket.assignee_id == ticket.assigner_id:
         return
+    assigner_name = _get_user_name(db, ticket.assigner_id)
+    priority = ticket.priority.value
     data = {"type": "ticket_assigned", "ticket_id": str(ticket.id)}
     _send_to_user(
         db, ticket.assignee_id,
-        "New Ticket Assigned",
-        f"You've been assigned: {ticket.title}",
+        f"[{priority}] Assigned to you",
+        f"{assigner_name} assigned you: {ticket.title}",
         data,
     )
 
@@ -46,16 +54,19 @@ def notify_ticket_reassigned(
     """Notify old and new assignee on reassignment."""
     data = {"type": "ticket_reassigned", "ticket_id": str(ticket.id)}
     if old_assignee_id != new_assignee_id:
+        new_name = _get_user_name(db, new_assignee_id)
         _send_to_user(
             db, old_assignee_id,
-            "Ticket Unassigned",
-            f"You've been unassigned from: {ticket.title}",
+            "Ticket Reassigned",
+            f"{ticket.title} reassigned to {new_name}",
             data,
         )
+        old_name = _get_user_name(db, old_assignee_id)
+        priority = ticket.priority.value
         _send_to_user(
             db, new_assignee_id,
-            "Ticket Assigned",
-            f"You've been assigned: {ticket.title}",
+            f"[{priority}] Assigned to you",
+            f"{ticket.title} (reassigned from {old_name})",
             data,
         )
 
@@ -64,11 +75,12 @@ def notify_status_changed(db: Session, ticket: Ticket, changed_by_id: int) -> No
     """Notify assigner when assignee changes ticket status."""
     if changed_by_id == ticket.assigner_id:
         return
+    changer_name = _get_user_name(db, changed_by_id)
     data = {"type": "status_changed", "ticket_id": str(ticket.id)}
     _send_to_user(
         db, ticket.assigner_id,
-        "Ticket Status Updated",
-        f"{ticket.title} is now {ticket.status.value}",
+        f"{ticket.title}",
+        f"{changer_name} changed status to {ticket.status.value}",
         data,
     )
 
