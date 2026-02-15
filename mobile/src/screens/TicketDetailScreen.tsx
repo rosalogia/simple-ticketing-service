@@ -15,6 +15,7 @@ import {useAuth} from '../auth/AuthContext';
 import type {Ticket, Comment, QueueMember} from '../types';
 import type {HomeStackParamList} from '../navigation/AppNavigator';
 import CommentThread from '../components/CommentThread';
+import InfoButton, {PriorityHelpContent} from '../components/InfoButton';
 import {
   colors,
   spacing,
@@ -183,6 +184,9 @@ export default function TicketDetailScreen({route, navigation}: Props) {
               </Text>
             </TouchableOpacity>
           </View>
+          <InfoButton>
+            <PriorityHelpContent />
+          </InfoButton>
           <View style={[styles.badge, {backgroundColor: sColor.bg}]}>
             <Text style={[styles.badgeText, {color: sColor.text}]}>
               {statusLabels[ticket.status]}

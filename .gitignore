@@ -27,6 +27,10 @@ mobile/.bundle/
 # Env
 backend/.env
 
+# Credentials
+keystore_credentials.txt
+firebase_key.json
+
 # OS
 .DS_Store
 

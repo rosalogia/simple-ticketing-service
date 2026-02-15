@@ -15,6 +15,7 @@ import {useAuth} from '../auth/AuthContext';
 import type {QueueMember, CategoriesResponse} from '../types';
 import type {HomeStackParamList} from '../navigation/AppNavigator';
 import {colors, spacing, fontSize, fontWeight, borderRadius, priorityLabels} from '../theme';
+import InfoButton, {PriorityHelpContent} from '../components/InfoButton';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'CreateTicket'>;
 
@@ -174,7 +175,12 @@ export default function CreateTicketScreen({navigation, route}: Props) {
           </View>
         )}
 
-        <Text style={styles.label}>Priority</Text>
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, {marginTop: 0, marginBottom: 0}]}>Priority</Text>
+          <InfoButton>
+            <PriorityHelpContent />
+          </InfoButton>
+        </View>
         <TouchableOpacity style={styles.picker} onPress={handlePriorityPicker}>
           <Text style={styles.pickerText}>{priorityLabels[priority]}</Text>
         </TouchableOpacity>
@@ -256,6 +262,13 @@ const styles = StyleSheet.create({
     color: colors.ink,
     marginBottom: spacing.xs,
     marginTop: spacing.md,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
   input: {
     backgroundColor: colors.white,

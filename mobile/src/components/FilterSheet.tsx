@@ -20,6 +20,7 @@ import {
   priorityColors,
   priorityLabels,
 } from '../theme';
+import InfoButton, {PriorityHelpContent} from './InfoButton';
 
 interface FilterState {
   status: TicketStatus[];
@@ -115,7 +116,12 @@ export default function FilterSheet({visible, onClose, filters, onApply}: Props)
             })}
           </View>
 
-          <Text style={styles.sectionTitle}>Priority</Text>
+          <View style={styles.sectionTitleRow}>
+            <Text style={[styles.sectionTitle, {marginTop: 0, marginBottom: 0}]}>Priority</Text>
+            <InfoButton>
+              <PriorityHelpContent />
+            </InfoButton>
+          </View>
           <View style={styles.chips}>
             {allPriorities.map(p => {
               const active = local.priority.includes(p);
@@ -189,6 +195,13 @@ const styles = StyleSheet.create({
     color: colors.ink,
     marginBottom: spacing.sm,
     marginTop: spacing.lg,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
   },
   chips: {
     flexDirection: 'row',
