@@ -52,7 +52,7 @@ jobs:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -PversionCode=${{ github.run_number }} -PversionName=1.${{ github.run_number }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -69,6 +69,6 @@ jobs:
           npx firebase-tools appdistribution:distribute \
             android/app/build/outputs/apk/release/app-release.apk \
             --app "${{ secrets.FIREBASE_APP_ID }}" \
-            --groups "Beta Testers" \
+            --groups "beta-testers" \
             2>&1 || echo "::warning::Firebase distribution failed — APK artifact is still available"
           rm -f /tmp/firebase-sa.json
