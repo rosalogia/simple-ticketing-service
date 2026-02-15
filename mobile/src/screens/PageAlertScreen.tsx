@@ -76,9 +76,12 @@ export default function PageAlertScreen({route, navigation}: Props) {
     soundRef.current = siren;
 
     return () => {
-      siren.stop();
-      siren.release();
-      soundRef.current = null;
+      // Only clean up if stopSound() hasn't already released it
+      if (soundRef.current === siren) {
+        siren.stop();
+        siren.release();
+        soundRef.current = null;
+      }
     };
   }, [pageSoundEnabled, pageVolume]);
 
