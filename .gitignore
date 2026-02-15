@@ -18,6 +18,8 @@ mobile/android/build/
 mobile/android/local.properties
 mobile/ios/Pods/
 mobile/ios/build/
+mobile/ios/*.xcworkspace/xcuserdata/
+mobile/ios/*.xcodeproj/xcuserdata/
 mobile/.bundle/
 
 # Dev script

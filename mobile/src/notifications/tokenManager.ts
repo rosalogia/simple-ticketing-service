@@ -42,6 +42,9 @@ export async function registerDeviceToken(): Promise<void> {
       return;
     }
 
+    if (!messaging().isDeviceRegisteredForRemoteMessages) {
+      await messaging().registerDeviceForRemoteMessages();
+    }
     const token = await messaging().getToken();
     const platform = Platform.OS as 'android' | 'ios';
     await deviceApi.registerToken(token, platform);
@@ -57,7 +60,7 @@ export async function registerDeviceToken(): Promise<void> {
       }
     });
   } catch (err) {
-    console.error('Failed to register device token:', err);
+    console.warn('Failed to register device token:', err);
   }
 }
 
