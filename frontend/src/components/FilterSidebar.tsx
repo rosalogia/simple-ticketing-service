@@ -4,6 +4,7 @@ import type { TicketFilters, TicketStatus, TicketPriority } from "../types";
 interface Props {
   filters: TicketFilters;
   onChange: (filters: TicketFilters) => void;
+  defaultFilters?: TicketFilters;
 }
 
 const STATUSES: { value: TicketStatus; label: string }[] = [
@@ -21,7 +22,7 @@ const PRIORITIES: { value: TicketPriority; label: string; dot: string }[] = [
   { value: "SEV4", label: "Sev-4", dot: "bg-sev4" },
 ];
 
-export default function FilterSidebar({ filters, onChange }: Props) {
+export default function FilterSidebar({ filters, defaultFilters, onChange }: Props) {
   const [searchValue, setSearchValue] = useState(filters.search || "");
   const [expanded, setExpanded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -53,12 +54,16 @@ export default function FilterSidebar({ filters, onChange }: Props) {
     onChange({ ...filters, priority: next.length ? next : undefined });
   };
 
+  const defaults = defaultFilters || {};
+  const statusDiffers =
+    JSON.stringify([...(filters.status || [])].sort()) !==
+    JSON.stringify([...(defaults.status || [])].sort());
   const hasFilters =
-    !!filters.search || !!filters.status?.length || !!filters.priority?.length;
+    !!filters.search || statusDiffers || !!filters.priority?.length || !!filters.due_before;
 
   const clearAll = () => {
     setSearchValue("");
-    onChange({});
+    onChange(defaults);
   };
 
   const activeFilterCount =

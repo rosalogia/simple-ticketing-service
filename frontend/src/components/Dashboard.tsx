@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import type { Ticket, TicketStats, TicketFilters } from "../types";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import type { Ticket, TicketStats, TicketFilters, TicketStatus } from "../types";
 import { api } from "../api/client";
 import { useToast } from "./Toast";
 import StatsWidgets from "./StatsWidgets";
@@ -16,13 +16,23 @@ interface Props {
   onSelectTicket: (id: number) => void;
 }
 
+const DEFAULT_STATUS: TicketStatus[] = ["OPEN", "IN_PROGRESS", "BLOCKED"];
+const DEFAULT_FILTERS: TicketFilters = { status: DEFAULT_STATUS };
+
+const STAT_TO_STATUS: Record<string, TicketStatus> = {
+  open_count: "OPEN",
+  in_progress_count: "IN_PROGRESS",
+  blocked_count: "BLOCKED",
+  completed_count: "COMPLETED",
+};
+
 export default function Dashboard({
   currentUserId,
   queueId,
   onSelectTicket,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("assigned_to_me");
-  const [filters, setFilters] = useState<TicketFilters>({});
+  const [filters, setFilters] = useState<TicketFilters>(DEFAULT_FILTERS);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<TicketStats | null>(null);
@@ -65,7 +75,39 @@ export default function Dashboard({
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
-    setFilters({});
+    setFilters(DEFAULT_FILTERS);
+    setPage(0);
+  };
+
+  const activeStatKey = useMemo(() => {
+    if (filters.due_before && !filters.due_after) return "overdue_count";
+    if (filters.status?.length === 1) {
+      const entry = Object.entries(STAT_TO_STATUS).find(([, v]) => v === filters.status![0]);
+      return entry ? entry[0] : null;
+    }
+    return null;
+  }, [filters]);
+
+  const handleStatClick = (key: string) => {
+    if (activeStatKey === key) {
+      setFilters(DEFAULT_FILTERS);
+      setPage(0);
+      return;
+    }
+    setPage(0);
+    if (key === "overdue_count") {
+      const today = new Date().toISOString().split("T")[0];
+      setFilters({ status: DEFAULT_STATUS, due_before: today });
+    } else {
+      const status = STAT_TO_STATUS[key];
+      if (status) {
+        setFilters({ status: [status] });
+      }
+    }
+  };
+
+  const handleFilterChange = (f: TicketFilters) => {
+    setFilters(f);
     setPage(0);
   };
 
@@ -122,12 +164,12 @@ export default function Dashboard({
 
       {/* Stats */}
       <div className="mb-4 sm:mb-5">
-        <StatsWidgets stats={stats} />
+        <StatsWidgets stats={stats} onCardClick={handleStatClick} activeKey={activeStatKey} />
       </div>
 
       {/* Filter sidebar + Ticket list */}
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-        <FilterSidebar filters={filters} onChange={(f) => { setFilters(f); setPage(0); }} />
+        <FilterSidebar filters={filters} defaultFilters={DEFAULT_FILTERS} onChange={handleFilterChange} />
         {loading ? (
           <div className="flex-1 flex items-center justify-center py-20">
             <div className="text-stone-400 text-sm">Loading tickets...</div>
