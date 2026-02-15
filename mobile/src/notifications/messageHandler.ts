@@ -18,7 +18,7 @@ export async function handleRemoteMessage(
       android: {
         channelId: PAGE_CHANNEL_ID,
         importance: 4, // HIGH
-        // sound: 'alarm', // Uncomment when alarm.mp3 is added to res/raw/
+        sound: 'siren',
         vibrationPattern: [300, 500, 300, 500, 300, 500],
         flags: [AndroidFlags.FLAG_INSISTENT],
         ongoing: true,
