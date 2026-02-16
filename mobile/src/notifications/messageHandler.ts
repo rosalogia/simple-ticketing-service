@@ -1,6 +1,7 @@
-import notifee, {AndroidFlags, AndroidStyle} from '@notifee/react-native';
+import notifee, {AndroidCategory, AndroidFlags, AndroidStyle} from '@notifee/react-native';
 import {FirebaseMessagingTypes} from '@react-native-firebase/messaging';
-import {DEFAULT_CHANNEL_ID, PAGE_CHANNEL_ID, PAGE_VIBRATE_CHANNEL_ID} from './channels';
+import {AppState, NativeModules, Platform} from 'react-native';
+import {DEFAULT_CHANNEL_ID, PAGE_VIBRATE_CHANNEL_ID} from './channels';
 import {navigationRef} from '../navigation/AppNavigator';
 import {getPageSoundSettings} from './pageSettings';
 
@@ -13,14 +14,16 @@ export async function handleRemoteMessage(
   if (data.type === 'page') {
     const pageSettings = await getPageSoundSettings();
 
-    // Sound enabled: use siren channel so system plays sound even with screen off.
-    // PageAlertScreen will cancel the notification (stopping system sound) and play
-    // its own audio with volume control when it opens.
-    // Sound disabled: use vibrate-only channel.
+    // Start siren via native SirenPlayer (plays on STREAM_ALARM at absolute volume).
+    // Always use vibrate-only channel so notification doesn't also play sound.
+    if (pageSettings.soundEnabled && Platform.OS === 'android' && NativeModules.SirenPlayer) {
+      NativeModules.SirenPlayer.play(pageSettings.volume);
+    }
+
     const androidConfig: any = {
-      channelId: pageSettings.soundEnabled ? PAGE_CHANNEL_ID : PAGE_VIBRATE_CHANNEL_ID,
+      channelId: PAGE_VIBRATE_CHANNEL_ID,
       importance: 4, // HIGH
-      ...(pageSettings.soundEnabled && {sound: 'siren'}),
+      category: AndroidCategory.ALARM,
       vibrationPattern: [300, 500, 300, 500, 300, 500],
       flags: [AndroidFlags.FLAG_INSISTENT],
       ongoing: true,
@@ -52,8 +55,11 @@ export async function handleRemoteMessage(
       android: androidConfig,
     });
 
-    // Navigate to full-screen alert if app is in foreground
-    if (navigationRef.isReady()) {
+    // Navigate to full-screen alert only if app is actively in the foreground.
+    // When backgrounded, the React tree is still alive so navigationRef.isReady()
+    // returns true — but navigating would mount PageAlertScreen which cancels
+    // the notification on mount, preventing the heads-up notification from showing.
+    if (AppState.currentState === 'active' && navigationRef.isReady()) {
       (navigationRef as any).navigate('PageAlert', {
         ticketId: Number(data.ticket_id),
         title: data.title,
