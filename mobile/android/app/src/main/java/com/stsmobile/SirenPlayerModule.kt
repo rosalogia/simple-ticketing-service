@@ -1,9 +1,17 @@
 package com.stsmobile
 
+import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.net.Uri
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.provider.Settings
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -16,6 +24,7 @@ class SirenPlayerModule(reactContext: ReactApplicationContext) :
     override fun getName(): String = "SirenPlayer"
 
     private var mediaPlayer: MediaPlayer? = null
+    private var vibrator: Vibrator? = null
     private var savedAlarmVolume: Int = -1
 
     @ReactMethod
@@ -46,6 +55,10 @@ class SirenPlayerModule(reactContext: ReactApplicationContext) :
             mp.start()
             mediaPlayer = mp
 
+            // Start repeating vibration pattern at the native level so it
+            // works reliably even when the screen is off.
+            startVibration()
+
             promise.resolve(null)
         } catch (e: Exception) {
             promise.reject("SIREN_PLAY_ERROR", e.message, e)
@@ -69,6 +82,54 @@ class SirenPlayerModule(reactContext: ReactApplicationContext) :
             it.release()
         }
         mediaPlayer = null
+        stopVibration()
+    }
+
+    private fun getVibrator(): Vibrator {
+        val context = reactApplicationContext
+        return if (Build.VERSION.SDK_INT >= 31) {
+            val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vm.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+    }
+
+    private fun startVibration() {
+        val vib = getVibrator()
+        // Pattern: wait 0ms, vibrate 500ms, pause 300ms, vibrate 500ms, pause 300ms, vibrate 500ms, pause 2000ms
+        val pattern = longArrayOf(0, 500, 300, 500, 300, 500, 2000)
+        vib.vibrate(VibrationEffect.createWaveform(pattern, 0)) // 0 = repeat from index 0
+        vibrator = vib
+    }
+
+    private fun stopVibration() {
+        vibrator?.cancel()
+        vibrator = null
+    }
+
+    @ReactMethod
+    fun checkFullScreenIntent(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                val nm = reactApplicationContext
+                    .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                if (!nm.canUseFullScreenIntent()) {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                        Uri.parse("package:${reactApplicationContext.packageName}")
+                    )
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    reactApplicationContext.startActivity(intent)
+                    promise.resolve(false)
+                    return
+                }
+            }
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("FSI_CHECK_ERROR", e.message, e)
+        }
     }
 
     private fun restoreVolume() {

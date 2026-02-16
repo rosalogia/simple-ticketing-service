@@ -1,5 +1,6 @@
 import React, {useState, useEffect, useRef} from 'react';
 import {
+  AppState,
   View,
   Text,
   StyleSheet,
@@ -55,36 +56,45 @@ export default function PageAlertScreen({route, navigation}: Props) {
     return () => pulse.stop();
   }, [pulseAnim]);
 
-  // Vibrate repeatedly while screen is open
+  // Vibrate repeatedly while screen is open (iOS only — on Android,
+  // vibration is driven by the native SirenPlayer so it works even
+  // when the screen is off).
   useEffect(() => {
-    const pattern = [0, 500, 300, 500, 300, 500, 2000];
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'android') {
+      const pattern = [0, 500, 300, 500, 300, 500, 2000];
       Vibration.vibrate(pattern, true);
+      return () => Vibration.cancel();
     }
-    return () => Vibration.cancel();
   }, []);
 
-  // Cancel the system notification on mount to stop its sound —
-  // PageAlertScreen takes over with its own audio + vibration
+  // Cancel the system notification once the user can see this screen.
+  // When the app is backgrounded or screen-locked, the notification must
+  // persist (for heads-up display / lock-screen visibility).  We defer
+  // cancellation until AppState becomes 'active'.
   useEffect(() => {
-    if (notificationId) {
-      notifee.cancelNotification(notificationId);
+    if (!notificationId) return;
+
+    const cancel = () => notifee.cancelNotification(notificationId);
+
+    if (AppState.currentState === 'active') {
+      cancel();
+      return;
     }
+
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        cancel();
+        sub.remove();
+      }
+    });
+    return () => sub.remove();
   }, [notificationId]);
 
-  // Play siren sound if enabled
+  // On Android, siren is started by messageHandler via SirenPlayer.
+  // On iOS, start sound here as fallback.
   useEffect(() => {
-    if (!pageSoundEnabled) return;
+    if (!pageSoundEnabled || Platform.OS === 'android') return;
 
-    if (Platform.OS === 'android' && SirenPlayer) {
-      // Android: native module plays on STREAM_ALARM for absolute volume control
-      SirenPlayer.play(pageVolume);
-      return () => {
-        SirenPlayer.stop();
-      };
-    }
-
-    // iOS fallback: react-native-sound (relative to system volume)
     soundReleasedRef.current = false;
     Sound.setCategory('Playback');
     const siren = new Sound('siren.mp3', Sound.MAIN_BUNDLE, err => {

@@ -1,4 +1,5 @@
 import notifee, {EventType, Event} from '@notifee/react-native';
+import {NativeModules, Platform} from 'react-native';
 import {api} from '../api/client';
 import {navigationRef} from '../navigation/AppNavigator';
 import {getPageSoundSettings} from './pageSettings';
@@ -23,6 +24,10 @@ async function handleNotificationEvent({type, detail}: Event): Promise<void> {
 
   // Acknowledge action from notification button
   if (actionId === 'acknowledge' && ticketId) {
+    // Stop siren started by messageHandler
+    if (Platform.OS === 'android' && NativeModules.SirenPlayer) {
+      NativeModules.SirenPlayer.stop();
+    }
     try {
       await api.acknowledgeTicket(ticketId);
       if (detail.notification?.id) {
@@ -52,6 +57,9 @@ async function handleNotificationEvent({type, detail}: Event): Promise<void> {
   }
 
   // View ticket action or default press for non-page notifications
+  if (actionId === 'view_ticket' && isPage && Platform.OS === 'android' && NativeModules.SirenPlayer) {
+    NativeModules.SirenPlayer.stop();
+  }
   if ((actionId === 'view_ticket' || actionId === 'default') && ticketId) {
     if (navigationRef.isReady()) {
       (navigationRef as any).navigate('MainTabs', {

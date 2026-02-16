@@ -1,6 +1,6 @@
 import notifee, {AndroidCategory, AndroidFlags, AndroidStyle} from '@notifee/react-native';
 import {FirebaseMessagingTypes} from '@react-native-firebase/messaging';
-import {AppState, NativeModules, Platform} from 'react-native';
+import {NativeModules, Platform} from 'react-native';
 import {DEFAULT_CHANNEL_ID, PAGE_VIBRATE_CHANNEL_ID} from './channels';
 import {navigationRef} from '../navigation/AppNavigator';
 import {getPageSoundSettings} from './pageSettings';
@@ -55,11 +55,10 @@ export async function handleRemoteMessage(
       android: androidConfig,
     });
 
-    // Navigate to full-screen alert only if app is actively in the foreground.
-    // When backgrounded, the React tree is still alive so navigationRef.isReady()
-    // returns true — but navigating would mount PageAlertScreen which cancels
-    // the notification on mount, preventing the heads-up notification from showing.
-    if (AppState.currentState === 'active' && navigationRef.isReady()) {
+    // Navigate to full-screen alert if app is in foreground or background.
+    // PageAlertScreen defers notification cancellation until AppState is 'active',
+    // so the heads-up notification persists when the app is backgrounded/locked.
+    if (navigationRef.isReady()) {
       (navigationRef as any).navigate('PageAlert', {
         ticketId: Number(data.ticket_id),
         title: data.title,
