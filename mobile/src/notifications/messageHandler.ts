@@ -28,6 +28,10 @@ export async function handleRemoteMessage(
       flags: [AndroidFlags.FLAG_INSISTENT],
       ongoing: true,
       autoCancel: false,
+      pressAction: {
+        id: 'default',
+        launchActivity: 'default',
+      },
       fullScreenAction: {
         id: 'default',
       },

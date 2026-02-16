@@ -19,6 +19,8 @@ const API_BASE = __DEV__
   ? 'http://localhost:8000'
   : 'https://simple-ticketing-service.up.railway.app';
 
+import {loadToken} from '../auth/keychain';
+
 // Token management — set by AuthContext after loading from keychain
 let _token: string | null = null;
 let _onSessionExpired: (() => void) | null = null;
@@ -33,6 +35,15 @@ export function getToken(): string | null {
 
 export function setOnSessionExpired(handler: () => void) {
   _onSessionExpired = handler;
+}
+
+/** Load token from keychain if not already set (for headless JS context). */
+export async function ensureToken(): Promise<void> {
+  if (_token) return;
+  const stored = await loadToken();
+  if (stored) {
+    _token = stored;
+  }
 }
 
 async function request<T>(

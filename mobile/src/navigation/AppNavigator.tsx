@@ -1,14 +1,16 @@
-import React, {useEffect, useRef} from 'react';
-import {ActivityIndicator, AppState, View} from 'react-native';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {ActivityIndicator, AppState, NativeModules, Platform, View} from 'react-native';
 import {NavigationContainer, createNavigationContainerRef} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import messaging from '@react-native-firebase/messaging';
+import notifee from '@notifee/react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useAuth} from '../auth/AuthContext';
 import {handleRemoteMessage} from '../notifications/messageHandler';
-import {setupNotificationActionHandler} from '../notifications/actionHandler';
+import {setupForegroundNotificationHandler} from '../notifications/actionHandler';
 import {requestNotificationPermission, registerDeviceToken} from '../notifications/tokenManager';
+import {getPageSoundSettings} from '../notifications/pageSettings';
 import {colors, fontSize, fontWeight} from '../theme';
 
 import LoginScreen from '../screens/LoginScreen';
@@ -165,13 +167,67 @@ function MainTabNavigator({route}: {route: {params: {queueId: number}}}) {
 
 export default function AppNavigator() {
   const {isLoading, isAuthenticated} = useAuth();
+  const [navReady, setNavReady] = useState(false);
 
-  // Setup foreground message handler and notification action handler
+  const onNavReady = useCallback(() => {
+    setNavReady(true);
+  }, []);
+
+  // Setup foreground message handler and foreground notification action handler
   useEffect(() => {
     const unsubscribe = messaging().onMessage(handleRemoteMessage);
-    setupNotificationActionHandler();
+    setupForegroundNotificationHandler();
     return unsubscribe;
   }, []);
+
+  // Handle cold-start navigation from notification tap
+  useEffect(() => {
+    if (!navReady || !isAuthenticated) return;
+
+    (async () => {
+      const initial = await notifee.getInitialNotification();
+      if (!initial) return;
+
+      const {notification, pressAction} = initial;
+      const data = notification.data;
+      const actionId = pressAction.id;
+      if (!data) return;
+
+      const ticketId = data.ticket_id ? Number(data.ticket_id) : null;
+      const isPage = data.type === 'page';
+
+      if (!ticketId) return;
+
+      // Stop siren if still playing
+      if (isPage && Platform.OS === 'android' && NativeModules.SirenPlayer) {
+        NativeModules.SirenPlayer.stop();
+      }
+
+      if (isPage && (actionId === 'default' || !actionId)) {
+        // Tapped notification body → open PageAlert
+        const pageSettings = await getPageSoundSettings();
+        (navigationRef as any).navigate('PageAlert', {
+          ticketId,
+          title: data.title || 'Unknown',
+          priority: data.priority || 'SEV1',
+          status: data.status || 'OPEN',
+          notificationId: notification.id,
+          pageSoundEnabled: pageSettings.soundEnabled,
+          pageVolume: pageSettings.volume,
+        });
+      } else if (actionId === 'view_ticket') {
+        // View Ticket action → navigate to ticket detail
+        (navigationRef as any).navigate('MainTabs', {
+          screen: 'HomeTab',
+          params: {
+            screen: 'TicketDetail',
+            params: {ticketId},
+          },
+        });
+      }
+      // 'acknowledge' is handled by the background handler — no navigation needed
+    })();
+  }, [navReady, isAuthenticated]);
 
   // Re-check notification permission when app returns to foreground
   const appState = useRef(AppState.currentState);
@@ -199,7 +255,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} onReady={onNavReady}>
       <RootStack.Navigator screenOptions={{headerShown: false}}>
         {!isAuthenticated ? (
           <RootStack.Screen name="Login" component={LoginScreen} />

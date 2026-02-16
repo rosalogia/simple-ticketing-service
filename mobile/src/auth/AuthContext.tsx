@@ -7,10 +7,10 @@ import React, {
   type ReactNode,
 } from 'react';
 import {Linking} from 'react-native';
-import * as Keychain from 'react-native-keychain';
 import {authApi, setToken, setOnSessionExpired} from '../api/client';
 import {createNotificationChannels} from '../notifications/channels';
 import {registerDeviceToken, unregisterDeviceToken} from '../notifications/tokenManager';
+import {saveToken, loadToken, clearToken} from './keychain';
 import type {User} from '../types';
 
 interface AuthState {
@@ -28,23 +28,6 @@ interface AuthContextValue extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-const KEYCHAIN_SERVICE = 'sts-session';
-
-async function saveToken(token: string): Promise<void> {
-  await Keychain.setGenericPassword('session', token, {
-    service: KEYCHAIN_SERVICE,
-  });
-}
-
-async function loadToken(): Promise<string | null> {
-  const creds = await Keychain.getGenericPassword({service: KEYCHAIN_SERVICE});
-  return creds ? creds.password : null;
-}
-
-async function clearStoredToken(): Promise<void> {
-  await Keychain.resetGenericPassword({service: KEYCHAIN_SERVICE});
-}
 
 export function AuthProvider({children}: {children: ReactNode}) {
   const [state, setState] = useState<AuthState>({
@@ -66,7 +49,7 @@ export function AuthProvider({children}: {children: ReactNode}) {
 
   const resetAuth = useCallback(() => {
     setToken(null);
-    clearStoredToken();
+    clearToken();
     setState(prev => ({
       ...prev,
       isAuthenticated: false,
