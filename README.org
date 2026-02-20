@@ -1,0 +1,159 @@
+#+TITLE: STS - Collaborative Ticketing System
+
+A collaborative ticketing system where users can assign tasks to each other. Unlike traditional ticketing systems, STS enables bidirectional task assignment — friends, teammates, or housemates can ticket each other for anything from reading recommendations to urgent favors.
+
+Tickets are organized into *Queues* — shared spaces with role-based access control. Queues can be created manually or imported from a Discord server.
+
+* Architecture
+
+#+begin_example
+sts/
+├── backend/          FastAPI + SQLAlchemy + Alembic
+├── frontend/         React + Vite + Tailwind CSS + TypeScript
+├── mobile/           React Native (Android & iOS)
+└── docker-compose.yml    Production deployment (PostgreSQL + nginx)
+#+end_example
+
+The backend exposes a REST API at =/api/*=. The frontend is a single-page app served by nginx in production and Vite in development, both proxying =/api= requests to the backend. The mobile app connects directly to the backend's production URL.
+
+* Quick Start
+
+First-time setup:
+
+#+begin_src bash
+cd backend && uv sync && cd ..
+cd frontend && npm install && cd ..
+#+end_src
+
+Then start both servers:
+
+#+begin_src bash
+./dev.sh              # starts backend (:8000) and frontend (:5173)
+./dev.sh status       # check what's running
+./dev.sh logs backend # tail backend logs (Ctrl+C to detach)
+./dev.sh restart      # restart both servers
+./dev.sh stop         # stop everything
+#+end_src
+
+Open *http://localhost:5173* in your browser.
+
+In debug mode (the default), the app auto-creates the database schema and seeds sample data on first startup — no manual steps needed. Use the user-switcher dropdown to view the system as different users.
+
+To manually reset the database:
+
+#+begin_src bash
+cd backend && uv run python -m app.seed
+#+end_src
+
+See =./dev.sh help= for all commands.
+
+** Mobile
+
+#+begin_src bash
+cd mobile && npm install
+npx react-native run-android  # or run-ios
+#+end_src
+
+Requires Android Studio + JDK 17 (Android) or Xcode (iOS).
+
+* Prerequisites
+
+- Python 3.13+ and [[https://docs.astral.sh/uv/][uv]]
+- Node.js 20+ and npm
+- (Mobile) Android Studio + JDK 17, or Xcode for iOS
+
+* Key Features
+
+** Core Ticketing
+
+- *Queues* — shared ticket spaces with OWNER / MEMBER / VIEWER roles
+- *Ticket creation* with priority levels (Sev-1 through Sev-4), due dates, and Category/Type/Item tagging
+- *Severity limits* — queue owners can restrict the max severity members can create
+- *Ticket detail* view with inline editing and status workflow (Open → In Progress → Blocked/Completed/Cancelled)
+- *Comment threads* on tickets
+- *Search and filter* by status, priority, assignee, date, category, and free text
+- *Dashboard* with "Assigned to Me" and "Assigned by Me" tabs plus ticket statistics
+
+** Discord Integration
+
+- *Discord OAuth2* login for production authentication
+- *Import Discord servers* as queues, syncing members and roles via a bot
+- *Re-sync* members and roles from Discord at any time
+- *Slash commands* — =/cut= to create tickets and =/assigned= to view tickets, with rich embeds and pagination
+
+** Mobile App (React Native)
+
+- Full-featured Android and iOS app with ticket management, queue settings, and comment threads
+- *Push notifications* via Firebase Cloud Messaging for ticket assignments, status changes, and new comments
+- *Notification actions* — acknowledge or complete tickets directly from the notification shade
+- *Deep links* — tapping a notification navigates to the specific ticket, even on cold start
+
+** Paging & Escalation
+
+- *Disruptive paging* — Sev-1 and Sev-2 tickets trigger alarm-style alerts with continuous vibration and a system-volume-independent siren
+- *Re-paging* at intervals until acknowledged (Sev-1 OPEN: 15 min, Sev-1 IN_PROGRESS: 2 hrs, Sev-2 OPEN: 30 min, Sev-2 IN_PROGRESS: 8 hrs)
+- *Pageable hours* — per-user, per-queue schedule controlling when Sev-2 pages are delivered; Sev-1 pages anytime (with opt-out)
+- *Automatic escalation* — tickets escalate priority based on due dates (Sev-4 → Sev-3 → Sev-2 → Sev-1), triggering pages as they cross the Sev-2/Sev-1 threshold
+
+* Authentication
+
+STS supports two modes:
+
+- *Debug mode* (=DEBUG=true= in =.env=): Uses a user-switcher dropdown with no real authentication. The =X-User-Id= header identifies the current user. This is the default for local development.
+- *Production mode* (=DEBUG=false=): Discord OAuth2 login. Users authenticate via Discord, and their profile (name, avatar) is synced on each login. Requires =DISCORD_CLIENT_ID= and =DISCORD_CLIENT_SECRET=.
+
+* Configuration
+
+Copy =backend/.env.example= to =backend/.env= and fill in the values. Key settings:
+
+| Variable                    | Description                                                                                               | Required                |
+|-----------------------------+-----------------------------------------------------------------------------------------------------------+-------------------------|
+| =DEBUG=                     | =true= for dev mode, =false= for production                                                               | Yes                     |
+| =DISCORD_CLIENT_ID=         | Discord OAuth2 application ID                                                                             | Production only         |
+| =DISCORD_CLIENT_SECRET=     | Discord OAuth2 client secret                                                                              | Production only         |
+| =SESSION_SECRET_KEY=        | Secret for session signing (generate with =python -c "import secrets; print(secrets.token_urlsafe(32))"=) | Production only         |
+| =DISCORD_BOT_TOKEN=         | Bot token for Discord server import/sync                                                                  | Optional                |
+| =DATABASE_URL=              | Database connection string (defaults to SQLite)                                                           | Optional                |
+| =ALLOWED_ORIGINS=           | Comma-separated CORS origins (defaults to =http://localhost:5173=)                                        | Optional                |
+| =FCM_ENABLED=               | =true= to enable Firebase Cloud Messaging for push notifications                                          | Optional                |
+| =FIREBASE_CREDENTIALS_JSON= | Firebase service account JSON string                                                                      | Required if FCM enabled |
+
+* Production Deployment
+
+STS ships with Docker support for production:
+
+#+begin_src bash
+# Create a .env with production values (see backend/.env.example)
+docker compose up -d
+#+end_src
+
+This starts:
+- *PostgreSQL 16* — production database
+- *Backend* — FastAPI app with auto-migrations on startup
+- *Frontend* — nginx serving the React build + proxying API requests
+
+The app is available on port 80 (configurable via =PORT= env var).
+
+** Mobile Distribution
+
+Android APKs are built automatically via GitHub Actions on pushes to =main= that change =mobile/**=, and distributed to beta testers through Firebase App Distribution.
+
+* Discord Bot Setup
+
+To enable importing Discord servers as queues:
+
+1. Create a Discord application at [[https://discord.com/developers/applications][discord.com/developers]]
+2. Under *OAuth2*, add redirect URI: =http://localhost:5173/api/auth/callback= (or your production URL)
+3. Under *Bot*, generate a token and enable *Server Members Intent*
+4. Set =DISCORD_BOT_TOKEN= in your =.env=
+5. Invite the bot to your server: =https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&scope=bot&permissions=0=
+
+Then in the app: Create Queue → From Discord → select your server.
+
+* Planned Features
+
+- Discord channel notifications for key events
+- iOS TestFlight distribution
+- Offline support for mobile
+- File attachments
+- Audit trail / activity log
