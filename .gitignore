@@ -43,3 +43,6 @@ firebase_key.json
 # Playwright
 *.png
 .playwright-mcp
+
+# Local-only
+BACKLOG.md
