@@ -11,6 +11,7 @@ mobile/node_modules/
 
 # React Native
 mobile/android/app/release.keystore
+mobile/android/app/debug.keystore
 mobile/android/.gradle/
 mobile/android/app/.cxx/
 mobile/android/app/build/
@@ -25,6 +26,9 @@ mobile/.bundle/
 # Dev script
 .dev-logs/
 .dev-pids
+
+# Debug logs
+mobile/firebase-debug.log
 
 # Env
 backend/.env
