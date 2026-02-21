@@ -6,6 +6,7 @@ import type {
   Ticket,
   TicketListResponse,
   TicketStats,
+  User,
 } from "./types.js";
 
 export class StsClient {
@@ -50,6 +51,12 @@ export class StsClient {
       return undefined as T;
     }
     return (await res.json()) as T;
+  }
+
+  // ── Users ───────────────────────────────────────────────────────────
+
+  async listUsers(): Promise<User[]> {
+    return this.request<User[]>("GET", "/users");
   }
 
   // ── Queues ──────────────────────────────────────────────────────────
@@ -111,6 +118,7 @@ export class StsClient {
     category?: string;
     type?: string;
     item?: string;
+    on_behalf_of?: number;
   }): Promise<Ticket> {
     return this.request<Ticket>("POST", "/tickets", data as Record<string, unknown>);
   }
@@ -145,10 +153,12 @@ export class StsClient {
     );
   }
 
-  async addComment(ticketId: number, content: string): Promise<Comment> {
-    return this.request<Comment>("POST", `/tickets/${ticketId}/comments`, {
-      content,
-    });
+  async addComment(ticketId: number, content: string, onBehalfOf?: number): Promise<Comment> {
+    const body: Record<string, unknown> = { content };
+    if (onBehalfOf !== undefined) {
+      body.on_behalf_of = onBehalfOf;
+    }
+    return this.request<Comment>("POST", `/tickets/${ticketId}/comments`, body);
   }
 
   // ── Stats & Categories ──────────────────────────────────────────────

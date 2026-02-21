@@ -53,6 +53,7 @@ export interface Ticket {
   queue_id: number;
   assignee: User;
   assigner: User;
+  on_behalf_of: User | null;
   due_date: string | null;
   category: string | null;
   type: string | null;
@@ -75,6 +76,7 @@ export interface Comment {
   id: number;
   ticket_id: number;
   user: User;
+  on_behalf_of: User | null;
   content: string;
   created_at: string;
   updated_at: string | null;

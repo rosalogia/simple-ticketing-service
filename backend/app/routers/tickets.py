@@ -22,6 +22,7 @@ from ..models import (
     Ticket,
     TicketPriority,
     TicketStatus,
+    User,
 )
 from ..notifications import (
     notify_status_changed,
@@ -280,6 +281,7 @@ def list_tickets(
         .options(
             selectinload(Ticket.assignee),
             selectinload(Ticket.assigner),
+            selectinload(Ticket.on_behalf_of),
         )
         .filter(*conditions)
     )
@@ -346,7 +348,17 @@ def create_ticket(
     if not assignee_member:
         raise HTTPException(400, "Assignee must be a member of this queue")
 
-    ticket = Ticket(**payload.model_dump(), assigner_id=current_user_id)
+    # Allow API key users to attribute ticket creation to another user
+    assigner_id = current_user_id
+    on_behalf_of_id = None
+    if payload.on_behalf_of is not None and getattr(request.state, "api_key_auth", False):
+        bot_user = db.query(User).filter(User.id == payload.on_behalf_of).first()
+        if not bot_user:
+            raise HTTPException(400, "on_behalf_of user not found")
+        assigner_id = payload.on_behalf_of
+        on_behalf_of_id = current_user_id  # The API key holder
+
+    ticket = Ticket(**payload.model_dump(exclude={"on_behalf_of"}), assigner_id=assigner_id, on_behalf_of_id=on_behalf_of_id)
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
@@ -378,6 +390,7 @@ def create_ticket(
         .options(
             selectinload(Ticket.assignee),
             selectinload(Ticket.assigner),
+            selectinload(Ticket.on_behalf_of),
             selectinload(Ticket.comments),
         )
         .filter(Ticket.id == ticket.id)
@@ -397,7 +410,9 @@ def get_ticket(
         .options(
             selectinload(Ticket.assignee),
             selectinload(Ticket.assigner),
+            selectinload(Ticket.on_behalf_of),
             selectinload(Ticket.comments).selectinload(Comment.user),
+            selectinload(Ticket.comments).selectinload(Comment.on_behalf_of),
         )
         .filter(Ticket.id == ticket_id)
         .first()
@@ -518,6 +533,7 @@ def update_ticket(
         .options(
             selectinload(Ticket.assignee),
             selectinload(Ticket.assigner),
+            selectinload(Ticket.on_behalf_of),
             selectinload(Ticket.comments),
         )
         .filter(Ticket.id == ticket.id)
@@ -599,6 +615,7 @@ def escalate_ticket(
         .options(
             selectinload(Ticket.assignee),
             selectinload(Ticket.assigner),
+            selectinload(Ticket.on_behalf_of),
             selectinload(Ticket.comments),
         )
         .filter(Ticket.id == ticket.id)
@@ -643,6 +660,7 @@ def page_ticket(
         .options(
             selectinload(Ticket.assignee),
             selectinload(Ticket.assigner),
+            selectinload(Ticket.on_behalf_of),
             selectinload(Ticket.comments),
         )
         .filter(Ticket.id == ticket.id)

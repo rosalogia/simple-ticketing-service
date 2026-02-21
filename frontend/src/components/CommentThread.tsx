@@ -153,6 +153,9 @@ export default function CommentThread({
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-semibold text-ink-light">
                     {comment.user.display_name}
+                    {comment.on_behalf_of && (
+                      <span className="text-xs text-stone-400 ml-1.5 font-normal">on behalf of {comment.on_behalf_of.display_name}</span>
+                    )}
                   </span>
                   <div className="flex items-center gap-2">
                     {comment.updated_at && (

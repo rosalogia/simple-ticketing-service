@@ -173,6 +173,9 @@ export default function TicketList({
                     <span className="text-sm text-stone-600">
                       {person.display_name}
                     </span>
+                    {activeTab === "assigned_to_me" && ticket.on_behalf_of && (
+                      <div className="text-xs text-stone-400 mt-0.5">on behalf of {ticket.on_behalf_of.display_name}</div>
+                    )}
                   </td>
                 </tr>
               );
@@ -228,6 +231,9 @@ export default function TicketList({
                 )}
                 <span className="text-[10px] text-stone-400 ml-auto">
                   {person.display_name}
+                  {activeTab === "assigned_to_me" && ticket.on_behalf_of && (
+                    <> on behalf of {ticket.on_behalf_of.display_name}</>
+                  )}
                 </span>
               </div>
             </div>

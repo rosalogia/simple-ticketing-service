@@ -87,7 +87,12 @@ export default function CommentThread({ticketId, comments, onRefresh}: Props) {
       {comments.map(comment => (
         <View key={comment.id} style={styles.comment}>
           <View style={styles.commentHeader}>
-            <Text style={styles.author}>{comment.user.display_name}</Text>
+            <View>
+              <Text style={styles.author}>{comment.user.display_name}</Text>
+              {comment.on_behalf_of && (
+                <Text style={styles.oboText}>on behalf of {comment.on_behalf_of.display_name}</Text>
+              )}
+            </View>
             <Text style={styles.date}>{formatDate(comment.created_at)}</Text>
           </View>
           {editingId === comment.id ? (
@@ -183,6 +188,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
     color: colors.ink,
+  },
+  oboText: {
+    fontSize: fontSize.xs,
+    color: colors.inkMuted,
+    marginTop: 1,
   },
   date: {
     fontSize: fontSize.xs,

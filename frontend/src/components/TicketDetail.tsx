@@ -403,6 +403,11 @@ export default function TicketDetail({
               <div className="text-sm font-semibold text-ink-light">
                 {ticket.assigner.display_name}
               </div>
+              {ticket.on_behalf_of && (
+                <div className="text-xs text-stone-400 mt-0.5">
+                  on behalf of {ticket.on_behalf_of.display_name}
+                </div>
+              )}
             </div>
             <div>
               <div className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-1">

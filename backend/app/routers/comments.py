@@ -6,6 +6,7 @@ from ..ratelimit import limiter
 from ..auth import get_current_user_id
 from ..database import get_db
 from ..models import Comment, QueueMember, Ticket, User
+
 from ..notifications import notify_comment_added
 from ..schemas import CommentCreate, CommentResponse, CommentUpdate
 
@@ -36,7 +37,7 @@ def list_comments(
 
     comments = (
         db.query(Comment)
-        .options(selectinload(Comment.user))
+        .options(selectinload(Comment.user), selectinload(Comment.on_behalf_of))
         .filter(Comment.ticket_id == ticket_id)
         .order_by(Comment.created_at.asc())
         .all()
@@ -60,8 +61,18 @@ def create_comment(
     if not db.query(User).filter(User.id == current_user_id).first():
         raise HTTPException(404, "User not found")
 
+    # Allow API key users to attribute comment to another user
+    user_id = current_user_id
+    on_behalf_of_id = None
+    if payload.on_behalf_of is not None and getattr(request.state, "api_key_auth", False):
+        bot_user = db.query(User).filter(User.id == payload.on_behalf_of).first()
+        if not bot_user:
+            raise HTTPException(400, "on_behalf_of user not found")
+        user_id = payload.on_behalf_of
+        on_behalf_of_id = current_user_id
+
     comment = Comment(
-        ticket_id=ticket_id, user_id=current_user_id, content=payload.content
+        ticket_id=ticket_id, user_id=user_id, content=payload.content, on_behalf_of_id=on_behalf_of_id
     )
     db.add(comment)
     db.commit()
@@ -74,7 +85,7 @@ def create_comment(
 
     comment = (
         db.query(Comment)
-        .options(selectinload(Comment.user))
+        .options(selectinload(Comment.user), selectinload(Comment.on_behalf_of))
         .filter(Comment.id == comment.id)
         .first()
     )
@@ -112,7 +123,7 @@ def update_comment(
 
     comment = (
         db.query(Comment)
-        .options(selectinload(Comment.user))
+        .options(selectinload(Comment.user), selectinload(Comment.on_behalf_of))
         .filter(Comment.id == comment.id)
         .first()
     )

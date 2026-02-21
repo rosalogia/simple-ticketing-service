@@ -63,6 +63,7 @@ def get_current_user_id(
     # API key auth (MCP server, CLI tools, etc.)
     api_key_user_id = _validate_api_key(request, db)
     if api_key_user_id is not None:
+        request.state.api_key_auth = True
         return api_key_user_id
 
     session_id = _get_session_id_from_request(request)
@@ -92,6 +93,7 @@ def get_optional_user_id(
     # API key auth (MCP server, CLI tools, etc.)
     api_key_user_id = _validate_api_key(request, db)
     if api_key_user_id is not None:
+        request.state.api_key_auth = True
         return api_key_user_id
 
     session_id = _get_session_id_from_request(request)

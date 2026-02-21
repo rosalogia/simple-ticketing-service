@@ -279,7 +279,12 @@ export default function TicketDetailScreen({route, navigation}: Props) {
           <Text style={styles.metaValue}>{ticket.assignee.display_name}</Text>
         </MetaRow>
         <MetaRow label="Created by">
-          <Text style={styles.metaValue}>{ticket.assigner.display_name}</Text>
+          <View>
+            <Text style={styles.metaValue}>{ticket.assigner.display_name}</Text>
+            {ticket.on_behalf_of && (
+              <Text style={styles.oboText}>on behalf of {ticket.on_behalf_of.display_name}</Text>
+            )}
+          </View>
         </MetaRow>
         {ticket.due_date && (
           <MetaRow label="Due date">
@@ -556,6 +561,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.ink,
     fontWeight: fontWeight.medium,
+  },
+  oboText: {
+    fontSize: fontSize.xs,
+    color: colors.stone400,
+    marginTop: 2,
   },
   countdownRow: {
     flexDirection: 'row',

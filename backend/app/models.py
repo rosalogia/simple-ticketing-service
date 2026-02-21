@@ -73,7 +73,7 @@ class User(Base):
     created_tickets: Mapped[list[Ticket]] = relationship(
         foreign_keys="Ticket.assigner_id", back_populates="assigner"
     )
-    comments: Mapped[list[Comment]] = relationship(back_populates="user")
+    comments: Mapped[list[Comment]] = relationship(foreign_keys="Comment.user_id", back_populates="user")
     queue_memberships: Mapped[list[QueueMember]] = relationship(back_populates="user")
 
 
@@ -129,6 +129,7 @@ class Ticket(Base):
     queue_id: Mapped[int] = mapped_column(ForeignKey("queues.id", ondelete="CASCADE"), index=True)
     assignee_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     assigner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    on_behalf_of_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     due_date: Mapped[Optional[date]] = mapped_column(nullable=True)
     category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -145,6 +146,7 @@ class Ticket(Base):
     assigner: Mapped[User] = relationship(
         foreign_keys=[assigner_id], back_populates="created_tickets"
     )
+    on_behalf_of: Mapped[Optional[User]] = relationship(foreign_keys=[on_behalf_of_id])
     comments: Mapped[list[Comment]] = relationship(
         back_populates="ticket", order_by="Comment.created_at",
         cascade="all, delete-orphan",
@@ -158,11 +160,13 @@ class Comment(Base):
     ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     content: Mapped[str] = mapped_column(Text)
+    on_behalf_of_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(default=None)
 
     ticket: Mapped[Ticket] = relationship(back_populates="comments")
-    user: Mapped[User] = relationship(back_populates="comments")
+    user: Mapped[User] = relationship(foreign_keys=[user_id], back_populates="comments")
+    on_behalf_of: Mapped[Optional[User]] = relationship(foreign_keys=[on_behalf_of_id])
 
 
 class Session(Base):

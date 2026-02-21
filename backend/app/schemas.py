@@ -126,6 +126,7 @@ class TicketCreate(BaseModel):
     category: Optional[str] = Field(None, max_length=100)
     type: Optional[str] = Field(None, max_length=100)
     item: Optional[str] = Field(None, max_length=100)
+    on_behalf_of: Optional[int] = None
 
 
 class TicketUpdate(BaseModel):
@@ -149,6 +150,7 @@ class TicketResponse(BaseModel):
     queue_id: int
     assignee: UserResponse
     assigner: UserResponse
+    on_behalf_of: UserResponse | None = None
     due_date: Optional[date]
     category: Optional[str]
     type: Optional[str]
@@ -174,6 +176,7 @@ class TicketListResponse(BaseModel):
 
 class CommentCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=5000)
+    on_behalf_of: Optional[int] = None
 
 
 class CommentUpdate(BaseModel):
@@ -184,6 +187,7 @@ class CommentResponse(BaseModel):
     id: int
     ticket_id: int
     user: UserResponse
+    on_behalf_of: UserResponse | None = None
     content: str
     created_at: datetime
     updated_at: datetime | None = None

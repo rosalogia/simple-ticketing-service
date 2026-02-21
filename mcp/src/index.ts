@@ -13,6 +13,9 @@ if (!STS_API_URL || !STS_API_KEY) {
 
 const client = new StsClient(STS_API_URL, STS_API_KEY);
 
+// Resolved at startup — the "Claude" bot user ID for ticket attribution
+let botUserId: number | undefined;
+
 const server = new McpServer({
   name: "sts",
   version: "0.1.0",
@@ -130,7 +133,10 @@ server.tool(
     item: z.string().optional().describe("Item"),
   },
   async (params) => {
-    const ticket = await client.createTicket(params);
+    const ticket = await client.createTicket({
+      ...params,
+      ...(botUserId !== undefined ? { on_behalf_of: botUserId } : {}),
+    });
     return {
       content: [
         {
@@ -210,7 +216,7 @@ server.tool(
     content: z.string().describe("Comment text"),
   },
   async ({ ticket_id, content }) => {
-    const comment = await client.addComment(ticket_id, content);
+    const comment = await client.addComment(ticket_id, content, botUserId);
     return {
       content: [
         {
@@ -263,6 +269,20 @@ server.tool(
 // ── Start server ──────────────────────────────────────────────────────
 
 async function main() {
+  // Discover the Claude bot user for ticket attribution
+  try {
+    const users = await client.listUsers();
+    const bot = users.find((u) => u.username === "claude-bot");
+    if (bot) {
+      botUserId = bot.id;
+      console.error(`[sts] Using bot user: ${bot.display_name} (id=${bot.id})`);
+    } else {
+      console.error("[sts] Warning: claude-bot user not found, tickets will be attributed to API key owner");
+    }
+  } catch (err) {
+    console.error("[sts] Warning: could not look up bot user:", err);
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
