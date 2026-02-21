@@ -9,6 +9,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session as DBSession
 
+from ..auth import _validate_api_key
 from ..config import (
     DISCORD_CLIENT_ID,
     DISCORD_CLIENT_SECRET,
@@ -138,6 +139,17 @@ def me(request: Request, db: DBSession = Depends(get_db)):
                     discord_client_id=client_id,
                 )
         return AuthStatusResponse(authenticated=False, dev_mode=True, discord_client_id=client_id)
+
+    # API key auth (X-Api-Key header)
+    api_key_user_id = _validate_api_key(request, db)
+    if api_key_user_id is not None:
+        user = db.query(User).filter(User.id == api_key_user_id).first()
+        if user:
+            return AuthStatusResponse(
+                authenticated=True,
+                user=UserResponse.model_validate(user),
+                discord_client_id=client_id,
+            )
 
     # Check Bearer token first, then cookie
     auth_header = request.headers.get("Authorization")
