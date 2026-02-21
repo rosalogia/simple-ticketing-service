@@ -22,8 +22,8 @@ def upgrade() -> None:
     """Seed a Claude bot user for MCP ticket attribution."""
     op.execute(
         sa.text(
-            "INSERT INTO users (username, display_name, discord_id, avatar_url) "
-            "VALUES ('claude-bot', 'Claude', NULL, NULL)"
+            "INSERT INTO users (username, display_name, discord_id, avatar_url, created_at) "
+            "VALUES ('claude-bot', 'Claude', NULL, NULL, NOW())"
         )
     )
 
