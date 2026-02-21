@@ -8,6 +8,28 @@ from pydantic import BaseModel, ConfigDict, Field
 from .models import QueueRole, TicketPriority, TicketStatus
 
 
+# ── API Keys ──────────────────────────────────────────────────────────
+
+
+class ApiKeyCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class ApiKeyResponse(BaseModel):
+    id: int
+    key_prefix: str
+    name: str
+    created_at: datetime
+    last_used_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ApiKeyCreateResponse(ApiKeyResponse):
+    key: str
+
+
 # ── Users ──────────────────────────────────────────────────────────────
 
 

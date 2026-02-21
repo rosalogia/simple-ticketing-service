@@ -8,6 +8,8 @@ backend/*.db
 frontend/node_modules/
 frontend/dist/
 mobile/node_modules/
+mcp/node_modules/
+mcp/dist/
 
 # React Native
 mobile/android/app/release.keystore

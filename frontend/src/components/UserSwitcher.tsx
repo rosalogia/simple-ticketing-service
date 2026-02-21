@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import type { User } from "../types";
 
 interface Props {
@@ -7,6 +8,8 @@ interface Props {
 }
 
 export default function UserSwitcher({ users, currentUserId, onChange }: Props) {
+  const navigate = useNavigate();
+
   return (
     <div className="flex items-center gap-3">
       <span className="text-stone-400 text-sm tracking-wide">Viewing as</span>
@@ -26,6 +29,15 @@ export default function UserSwitcher({ users, currentUserId, onChange }: Props) 
           </option>
         ))}
       </select>
+      <button
+        onClick={() => navigate("/settings/api-keys")}
+        className="text-stone-500 hover:text-stone-300 transition-colors p-1"
+        title="API Keys"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4" />
+        </svg>
+      </button>
     </div>
   );
 }

@@ -13,6 +13,8 @@ import type {
   DiscordServerInfo,
   UserQueueSettings,
   WeekSchedule,
+  ApiKey,
+  ApiKeyCreateResponse,
 } from "../types";
 
 // In dev mode, this is set by the user switcher.
@@ -121,6 +123,20 @@ export const queueApi = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+};
+
+// API Keys
+export const apiKeysApi = {
+  list: () => request<ApiKey[]>("/api/api-keys/"),
+
+  create: (name: string) =>
+    request<ApiKeyCreateResponse>("/api/api-keys/", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+
+  revoke: (keyId: number) =>
+    request<void>(`/api/api-keys/${keyId}`, { method: "DELETE" }),
 };
 
 export const api = {

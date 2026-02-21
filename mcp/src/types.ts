@@ -1,5 +1,10 @@
 export type TicketPriority = "SEV1" | "SEV2" | "SEV3" | "SEV4";
-export type TicketStatus = "OPEN" | "IN_PROGRESS" | "BLOCKED" | "COMPLETED" | "CANCELLED";
+export type TicketStatus =
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "BLOCKED"
+  | "COMPLETED"
+  | "CANCELLED";
 export type QueueRole = "OWNER" | "MEMBER" | "VIEWER";
 
 export interface User {
@@ -8,13 +13,6 @@ export interface User {
   display_name: string;
   avatar_url: string | null;
   created_at: string;
-}
-
-export interface AuthStatus {
-  authenticated: boolean;
-  user: User | null;
-  dev_mode: boolean;
-  discord_client_id: string | null;
 }
 
 export interface Queue {
@@ -36,14 +34,6 @@ export interface QueueMember {
   joined_at: string;
 }
 
-export interface DiscordServerInfo {
-  guild_id: string;
-  name: string;
-  icon_url: string | null;
-  member_count: number | null;
-  bot_present: boolean;
-}
-
 export interface Ticket {
   id: number;
   title: string;
@@ -60,10 +50,6 @@ export interface Ticket {
   created_at: string;
   updated_at: string;
   comment_count: number;
-  next_escalation_at: string | null;
-  next_page_at: string | null;
-  escalation_paused: boolean;
-  page_acknowledged: boolean;
 }
 
 export interface TicketListResponse {
@@ -93,47 +79,4 @@ export interface CategoriesResponse {
   categories: string[];
   types: string[];
   items: string[];
-}
-
-export type DaySchedule = { start: string; end: string } | null;
-export type WeekSchedule = Record<string, DaySchedule>;
-
-export interface UserQueueSettings {
-  id: number;
-  user_id: number;
-  queue_id: number;
-  schedule: WeekSchedule;
-  timezone: string;
-  sev1_off_hours_opt_out: boolean;
-}
-
-export interface ApiKey {
-  id: number;
-  key_prefix: string;
-  name: string;
-  created_at: string;
-  last_used_at: string | null;
-  revoked_at: string | null;
-}
-
-export interface ApiKeyCreateResponse extends ApiKey {
-  key: string;
-}
-
-export interface TicketFilters {
-  queue_id?: number;
-  status?: TicketStatus[];
-  priority?: TicketPriority[];
-  assignee_id?: number;
-  assigner_id?: number;
-  search?: string;
-  due_before?: string;
-  due_after?: string;
-  category?: string;
-  type?: string;
-  item?: string;
-  sort_by?: string;
-  sort_order?: "asc" | "desc";
-  skip?: number;
-  limit?: number;
 }

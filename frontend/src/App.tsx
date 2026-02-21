@@ -7,6 +7,7 @@ import { ToastProvider } from "./components/Toast";
 import LoginPage from "./components/LoginPage";
 import QueueList from "./components/QueueList";
 import CreateQueue from "./components/CreateQueue";
+import ApiKeysPage from "./components/ApiKeysPage";
 import {
   LayoutWrapper,
   DashboardRoute,
@@ -156,6 +157,12 @@ function AppContent() {
               onDeleted={handleQueueDeleted}
               onUpdated={loadQueues}
             />
+          }
+        />
+        <Route
+          path="/settings/api-keys"
+          element={
+            <ApiKeysPage currentUserId={currentUserId} onBack={() => navigate(-1)} />
           }
         />
         <Route path="*" element={<Navigate to="/queues" replace />} />

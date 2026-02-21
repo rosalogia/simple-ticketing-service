@@ -15,7 +15,7 @@ from .database import SessionLocal, engine
 from .fcm import init_fcm
 from .models import User
 from .ratelimit import limiter
-from .routers import auth, categories, comments, devices, queues, settings, tickets, users
+from .routers import api_keys, auth, categories, comments, devices, queues, settings, tickets, users
 from .scheduler import start_scheduler, stop_scheduler
 
 logger = logging.getLogger(__name__)
@@ -91,9 +91,10 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-User-Id"],
+    allow_headers=["Content-Type", "Authorization", "X-User-Id", "X-Api-Key"],
 )
 
+app.include_router(api_keys.router, prefix="/api/api-keys", tags=["api-keys"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(queues.router, prefix="/api/queues", tags=["queues"])

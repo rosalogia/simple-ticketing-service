@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import type { User } from "../types";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -10,6 +11,7 @@ interface Props {
 
 export default function UserProfileMenu({ user, onLogout }: Props) {
   const { updateUser } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(user.display_name);
@@ -145,7 +147,19 @@ export default function UserProfileMenu({ user, onLogout }: Props) {
             )}
           </div>
 
-          <div className="border-t border-stone-700 pt-3">
+          <div className="border-t border-stone-700 pt-3 space-y-1">
+            <button
+              onClick={() => {
+                setOpen(false);
+                navigate("/settings/api-keys");
+              }}
+              className="text-sm text-stone-400 hover:text-stone-200 transition-colors w-full text-left flex items-center gap-2"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4" />
+              </svg>
+              API Keys
+            </button>
             <button
               onClick={() => {
                 setOpen(false);

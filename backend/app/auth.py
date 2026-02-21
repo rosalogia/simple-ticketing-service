@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 
 from fastapi import Depends, HTTPException, Request
@@ -7,7 +8,27 @@ from sqlalchemy.orm import Session as DBSession
 
 from .config import is_dev_mode
 from .database import get_db
-from .models import Session
+from .models import ApiKey, Session
+
+
+def _validate_api_key(request: Request, db: DBSession) -> int | None:
+    """Check for X-Api-Key header and return user_id if valid, None otherwise."""
+    raw_key = request.headers.get("X-Api-Key")
+    if not raw_key:
+        return None
+
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    api_key = (
+        db.query(ApiKey)
+        .filter(ApiKey.key_hash == key_hash, ApiKey.revoked_at.is_(None))
+        .first()
+    )
+    if not api_key:
+        return None
+
+    api_key.last_used_at = datetime.now(timezone.utc)
+    db.commit()
+    return api_key.user_id
 
 
 def _get_session_id_from_request(request: Request) -> str | None:
@@ -37,7 +58,12 @@ def get_current_user_id(
         user_id = request.headers.get("X-User-Id")
         if user_id:
             return int(user_id)
-        # Fall through to Bearer token auth (mobile app)
+        # Fall through to API key / Bearer token auth
+
+    # API key auth (MCP server, CLI tools, etc.)
+    api_key_user_id = _validate_api_key(request, db)
+    if api_key_user_id is not None:
+        return api_key_user_id
 
     session_id = _get_session_id_from_request(request)
     if not session_id:
@@ -61,7 +87,12 @@ def get_optional_user_id(
         user_id = request.headers.get("X-User-Id")
         if user_id:
             return int(user_id)
-        # Fall through to Bearer token auth (mobile app)
+        # Fall through to API key / Bearer token auth
+
+    # API key auth (MCP server, CLI tools, etc.)
+    api_key_user_id = _validate_api_key(request, db)
+    if api_key_user_id is not None:
+        return api_key_user_id
 
     session_id = _get_session_id_from_request(request)
     if not session_id:
