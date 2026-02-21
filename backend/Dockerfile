@@ -16,4 +16,4 @@ COPY app/ app/
 
 # Migrations run automatically on app startup (main.py lifespan)
 # Railway sets $PORT; fall back to 8000 for local Docker
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
