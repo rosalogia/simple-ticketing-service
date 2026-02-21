@@ -95,10 +95,26 @@ cd frontend && npm run test:coverage     # with coverage report
 
 53 tests covering the API client, auth context, all major components, and integration flows. Tests use MSW (Mock Service Worker) to intercept API requests and jsdom for rendering.
 
-** Running Both
+** Mobile (jest)
+
+Install test dependencies (one-time, included in =npm install=):
 
 #+begin_src bash
-(cd backend && uv run pytest) && (cd frontend && npm test)
+cd mobile && npm install --legacy-peer-deps
+#+end_src
+
+Run tests:
+
+#+begin_src bash
+cd mobile && npm test                   # single run
+#+end_src
+
+56 tests covering the API client, keychain auth, notification channels/messages/actions, page sound settings, and all major components (TicketCard, StatsRow, FilterSheet, CommentThread, MemberRow). Tests mock all native modules (Firebase, Notifee, Keychain, AsyncStorage, SirenPlayer) and use React Native Testing Library for component rendering.
+
+** Running All
+
+#+begin_src bash
+(cd backend && uv run pytest) && (cd frontend && npm test) && (cd mobile && npm test)
 #+end_src
 
 * Prerequisites
