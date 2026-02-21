@@ -56,6 +56,51 @@ npx react-native run-android  # or run-ios
 
 Requires Android Studio + JDK 17 (Android) or Xcode (iOS).
 
+* Testing
+
+** Backend (pytest)
+
+Install test dependencies (one-time):
+
+#+begin_src bash
+cd backend && uv sync --extra test
+#+end_src
+
+Run tests:
+
+#+begin_src bash
+cd backend && uv run pytest              # quick run
+cd backend && uv run pytest -v           # verbose (show each test name)
+cd backend && uv run pytest --tb=short   # shorter tracebacks on failure
+cd backend && uv run pytest --cov=app    # with coverage report
+#+end_src
+
+120 tests covering auth, models, scheduler logic, notifications, and all API routes. Tests use an in-memory SQLite database and run in under a second.
+
+** Frontend (vitest)
+
+Install test dependencies (one-time, included in =npm install=):
+
+#+begin_src bash
+cd frontend && npm install
+#+end_src
+
+Run tests:
+
+#+begin_src bash
+cd frontend && npm test                  # single run
+cd frontend && npm run test:watch        # watch mode (re-runs on file changes)
+cd frontend && npm run test:coverage     # with coverage report
+#+end_src
+
+53 tests covering the API client, auth context, all major components, and integration flows. Tests use MSW (Mock Service Worker) to intercept API requests and jsdom for rendering.
+
+** Running Both
+
+#+begin_src bash
+(cd backend && uv run pytest) && (cd frontend && npm test)
+#+end_src
+
 * Prerequisites
 
 - Python 3.13+ and [[https://docs.astral.sh/uv/][uv]]

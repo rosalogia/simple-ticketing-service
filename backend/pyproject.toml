@@ -19,3 +19,15 @@ dependencies = [
 
 [project.optional-dependencies]
 postgres = ["psycopg2-binary>=2.9.10"]
+test = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.28.1",
+    "pytest-cov>=6.0",
+    "factory-boy>=3.3",
+    "freezegun>=1.4",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
