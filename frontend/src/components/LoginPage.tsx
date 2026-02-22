@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 interface Props {
   onLogin: () => void;
 }
@@ -30,6 +32,14 @@ export default function LoginPage({ onLogin }: Props) {
           </svg>
           Sign in with Discord
         </button>
+        <div className="mt-6">
+          <Link
+            to="/docs"
+            className="text-stone-400 text-sm hover:text-stone-600 transition-colors"
+          >
+            Documentation
+          </Link>
+        </div>
       </div>
     </div>
   );
