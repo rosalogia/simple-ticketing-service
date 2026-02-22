@@ -34,8 +34,8 @@ def upgrade() -> None:
     for ak_id, ak_name in api_keys:
         conn.execute(
             sa.text(
-                "INSERT INTO users (username, display_name, is_bot) "
-                "VALUES (:username, :display_name, :is_bot)"
+                "INSERT INTO users (username, display_name, is_bot, created_at) "
+                "VALUES (:username, :display_name, :is_bot, NOW())"
             ),
             {"username": f"bot-{ak_id}", "display_name": ak_name, "is_bot": True},
         )
