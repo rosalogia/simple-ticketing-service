@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && tsx --tsconfig tsconfig.app.json scripts/prerender-docs.tsx",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
@@ -34,6 +34,7 @@
     "jsdom": "^28.1.0",
     "msw": "^2.12.10",
     "tailwindcss": "^4.1.18",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
