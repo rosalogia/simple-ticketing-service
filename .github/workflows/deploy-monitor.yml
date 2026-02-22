@@ -1,0 +1,115 @@
+name: Deploy Monitor
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-monitor
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      STS_BASE_URL: ${{ vars.STS_BASE_URL }}
+    steps:
+      - name: Wait for Railway build
+        run: sleep 180
+
+      - name: Poll health endpoint for expected commit
+        id: poll
+        run: |
+          EXPECTED_SHA="${{ github.sha }}"
+          MATCHED=false
+          LAST_STATUS=""
+          LAST_BODY=""
+
+          for i in $(seq 1 10); do
+            echo "Attempt $i/10..."
+            HTTP_CODE=$(curl -s -o /tmp/health_response -w "%{http_code}" "$STS_BASE_URL/api/health" || echo "000")
+            BODY=$(cat /tmp/health_response 2>/dev/null || echo "")
+            LAST_STATUS="$HTTP_CODE"
+            LAST_BODY="$BODY"
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              LIVE_SHA=$(echo "$BODY" | jq -r '.commit // empty')
+              echo "  HTTP 200 — commit: $LIVE_SHA"
+              if [ "$LIVE_SHA" = "$EXPECTED_SHA" ]; then
+                MATCHED=true
+                break
+              fi
+            else
+              echo "  HTTP $HTTP_CODE"
+            fi
+
+            sleep 30
+          done
+
+          echo "matched=$MATCHED" >> "$GITHUB_OUTPUT"
+          echo "last_status=$LAST_STATUS" >> "$GITHUB_OUTPUT"
+
+      - name: Create SEV2 ticket on failure
+        if: steps.poll.outputs.matched != 'true'
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          STS_API_KEY: ${{ secrets.STS_API_KEY }}
+          QUEUE_ID: ${{ vars.STS_DEPLOY_QUEUE_ID }}
+          ASSIGNEE_ID: ${{ vars.STS_DEPLOY_ASSIGNEE_ID }}
+        run: |
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          LAST_STATUS="${{ steps.poll.outputs.last_status }}"
+
+          if [ "$LAST_STATUS" = "200" ]; then
+            FAILURE_TYPE="Rollback detected — old deployment still serving"
+          elif [ "$LAST_STATUS" = "000" ]; then
+            FAILURE_TYPE="Full outage — health endpoint unreachable"
+          else
+            FAILURE_TYPE="Unhealthy — health endpoint returned HTTP $LAST_STATUS"
+          fi
+
+          TITLE="Deploy failed: $SHORT_SHA — $FAILURE_TYPE"
+
+          # Build ticket body — use jq to safely handle special characters
+          BODY=$(jq -rn \
+            --arg type "$FAILURE_TYPE" \
+            --arg sha "$COMMIT_SHA" \
+            --arg actor "$ACTOR" \
+            --arg msg "$COMMIT_MSG" \
+            --arg run "$RUN_URL" \
+            '"**Deploy failure detected by CI monitor**\n\n**Type:** " + $type + "\n**Commit:** `" + $sha + "`\n**Author:** " + $actor + "\n**Message:** " + $msg + "\n**Run:** " + $run + "\n\nThe deploy monitor polled `/api/health` for 5 minutes and the expected commit SHA never appeared. Investigate Railway deployment logs."')
+
+          # Attempt to create a SEV2 ticket
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$STS_BASE_URL/api/tickets" \
+            -H "Content-Type: application/json" \
+            -H "X-Api-Key: $STS_API_KEY" \
+            -d "$(jq -n \
+              --arg title "$TITLE" \
+              --arg description "$BODY" \
+              --argjson queue_id "$QUEUE_ID" \
+              --argjson assignee_id "$ASSIGNEE_ID" \
+              '{
+                title: $title,
+                description: $description,
+                queue_id: $queue_id,
+                assignee_id: $assignee_id,
+                priority: "SEV2"
+              }'
+            )")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          RESP_BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
+            echo "SEV2 ticket created successfully"
+            echo "$RESP_BODY" | jq .
+          else
+            echo "::warning::Failed to create SEV2 ticket (HTTP $HTTP_CODE): $RESP_BODY"
+          fi
+
+          # Fail the workflow regardless
+          echo "::error::Deployment verification failed: $FAILURE_TYPE"
+          exit 1

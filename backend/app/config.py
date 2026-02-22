@@ -28,6 +28,8 @@ DATABASE_URL = _raw_db_url.replace("postgres://", "postgresql://", 1) if _raw_db
 FIREBASE_CREDENTIALS_JSON = os.getenv("FIREBASE_CREDENTIALS_JSON") or None
 FCM_ENABLED = os.getenv("FCM_ENABLED", "false").lower() in ("true", "1", "yes")
 
+COMMIT_SHA = os.getenv("RAILWAY_GIT_COMMIT_SHA", "unknown")
+
 ALLOWED_ORIGINS = [
     o.strip()
     for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
