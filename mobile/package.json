@@ -7,7 +7,10 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:e2e:build": "detox build --configuration android.emu.debug",
+    "test:e2e": "scripts/reset-test-db.sh && scripts/run-e2e.sh",
+    "test:e2e:ci": "scripts/reset-test-db.sh && detox test --configuration android.ci.debug --headless --record-logs all"
   },
   "dependencies": {
     "@notifee/react-native": "^9.1.8",
@@ -40,7 +43,9 @@
     "@types/react": "^19.0.0",
     "@types/react-native-vector-icons": "^6.4.18",
     "babel-jest": "^30.2.0",
+    "detox": "^20.47.0",
     "jest": "^30.2.0",
+    "jest-circus": "^30.2.0",
     "react-test-renderer": "^19.0.0",
     "ts-jest": "^29.4.6",
     "typescript": "~5.7.0"

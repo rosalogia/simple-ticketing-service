@@ -29,6 +29,7 @@ export default function TicketCard({ticket, onPress}: Props) {
 
   return (
     <TouchableOpacity
+      testID={`ticket-card-${ticket.id}`}
       style={styles.card}
       onPress={onPress}
       activeOpacity={0.7}>

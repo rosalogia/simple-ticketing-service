@@ -182,6 +182,7 @@ export default function DashboardScreen({navigation, route}: Props) {
         {/* Tab selector */}
         <View style={styles.tabs}>
           <TouchableOpacity
+            testID="tab-to-me"
             style={[styles.tab, tab === 'to_me' && styles.tabActive]}
             onPress={() => handleTabChange('to_me')}>
             <Text
@@ -190,6 +191,7 @@ export default function DashboardScreen({navigation, route}: Props) {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
+            testID="tab-by-me"
             style={[styles.tab, tab === 'by_me' && styles.tabActive]}
             onPress={() => handleTabChange('by_me')}>
             <Text
@@ -254,6 +256,7 @@ export default function DashboardScreen({navigation, route}: Props) {
 
       {/* FAB */}
       <TouchableOpacity
+        testID="new-ticket-fab"
         style={styles.fab}
         onPress={() => navigation.navigate('CreateTicket', {queueId})}>
         <Text style={styles.fabText}>+ New</Text>

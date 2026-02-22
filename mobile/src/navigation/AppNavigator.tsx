@@ -160,6 +160,8 @@ function MainTabNavigator({route}: {route: {params: {queueId: number}}}) {
         name="HomeTab"
         options={{
           title: 'Tickets',
+          tabBarTestID: 'tab-bar-tickets',
+          tabBarAccessibilityLabel: 'tab-bar-tickets',
           tabBarIcon: ({color, size}) => (
             <Icon name="ticket-outline" size={size} color={color} />
           ),
@@ -171,6 +173,8 @@ function MainTabNavigator({route}: {route: {params: {queueId: number}}}) {
         name="NotificationsTab"
         options={{
           title: 'Notifications',
+          tabBarTestID: 'tab-bar-notifications',
+          tabBarAccessibilityLabel: 'tab-bar-notifications',
           tabBarIcon: ({color, size}) => (
             <Icon name="bell-outline" size={size} color={color} />
           ),
@@ -182,6 +186,8 @@ function MainTabNavigator({route}: {route: {params: {queueId: number}}}) {
         name="SettingsTab"
         options={{
           title: 'Settings',
+          tabBarTestID: 'tab-bar-settings',
+          tabBarAccessibilityLabel: 'tab-bar-settings',
           tabBarIcon: ({color, size}) => (
             <Icon name="cog-outline" size={size} color={color} />
           ),

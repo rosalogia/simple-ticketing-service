@@ -44,6 +44,7 @@ export default function QueueListScreen({navigation}: Props) {
 
   const renderQueue = ({item}: {item: Queue}) => (
     <TouchableOpacity
+      testID={`queue-card-${item.id}`}
       style={styles.card}
       onPress={() => navigation.navigate('MainTabs', {queueId: item.id})}
       activeOpacity={0.7}>
@@ -70,7 +71,7 @@ export default function QueueListScreen({navigation}: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Queues</Text>
-        <TouchableOpacity onPress={logout}>
+        <TouchableOpacity testID="logout-button" onPress={logout}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
@@ -92,6 +93,7 @@ export default function QueueListScreen({navigation}: Props) {
         }
       />
       <TouchableOpacity
+        testID="new-queue-fab"
         style={styles.fab}
         onPress={() => navigation.navigate('CreateQueue')}>
         <Text style={styles.fabText}>+ New Queue</Text>

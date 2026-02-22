@@ -156,9 +156,106 @@ jobs:
       - name: Run tests
         run: npm test
 
+  mobile-e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sts
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: sts_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install backend dependencies
+        run: uv sync --extra postgres
+        working-directory: backend
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install mobile dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Detox debug APK
+        run: npx detox build --configuration android.ci.debug
+
+      - name: Reset E2E database
+        run: scripts/reset-test-db.sh
+        env:
+          CI: "true"
+          PGUSER: sts
+          PGPASSWORD: test
+          DATABASE_URL: "postgresql://sts:test@localhost:5432/sts_e2e"
+
+      - name: Run mobile E2E tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          avd-name: detox_ci
+          force-avd-creation: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            adb reverse tcp:8000 tcp:8001
+            cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8001 &
+            BACKEND_PID=$!
+            for i in $(seq 1 30); do
+              curl -sf http://localhost:8001/api/health > /dev/null 2>&1 && break
+              [ "$i" -eq 30 ] && { echo "Backend failed to start"; exit 1; }
+              sleep 1
+            done
+            cd ../mobile && npx detox test --configuration android.ci.debug --headless --record-logs all
+            kill $BACKEND_PID 2>/dev/null || true
+        env:
+          CI: "true"
+          DEBUG: "true"
+          DATABASE_URL: "postgresql://sts:test@localhost:5432/sts_e2e"
+
+      - name: Upload Detox artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: detox-artifacts
+          path: mobile/artifacts/
+          retention-days: 14
+
   alert-on-failure:
     if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    needs: [backend, frontend, e2e, mobile]
+    needs: [backend, frontend, e2e, mobile, mobile-e2e]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -174,13 +271,15 @@ jobs:
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
           MOBILE_RESULT: ${{ needs.mobile.result }}
+          MOBILE_E2E_RESULT: ${{ needs.mobile-e2e.result }}
         run: |
           SHORT_SHA="${COMMIT_SHA:0:7}"
 
           FAILED_JOBS=""
-          for JOB in backend frontend e2e mobile; do
-            RESULT_VAR="${JOB^^}_RESULT"
-            RESULT="${!RESULT_VAR}"
+          for JOB in backend frontend e2e mobile mobile-e2e; do
+            VAR_NAME="${JOB^^}"
+            VAR_NAME="${VAR_NAME//-/_}_RESULT"
+            RESULT="${!VAR_NAME}"
             if [ "$RESULT" = "failure" ]; then
               FAILED_JOBS="${FAILED_JOBS}\n- ${JOB}"
             fi
