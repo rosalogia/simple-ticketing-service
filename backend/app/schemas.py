@@ -229,6 +229,21 @@ class CategoriesResponse(BaseModel):
     items: list[str]
 
 
+# ── Notifications ────────────────────────────────────────────────────
+
+
+class NotificationResponse(BaseModel):
+    id: int
+    type: str
+    title: str
+    body: str
+    ticket_id: int | None = None
+    read: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ── Device Tokens ─────────────────────────────────────────────────────
 
 

@@ -122,6 +122,16 @@ export interface QueueInvite {
   created_at: string;
 }
 
+export interface Notification {
+  id: number;
+  type: 'comment' | 'escalation' | 'page' | 'assignment' | 'status_change';
+  title: string;
+  body: string;
+  ticket_id: number | null;
+  read: boolean;
+  created_at: string;
+}
+
 export interface TicketFilters {
   queue_id?: number;
   status?: TicketStatus[];

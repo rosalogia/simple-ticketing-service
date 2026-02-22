@@ -11,6 +11,7 @@ import type {
   QueueMember,
   QueueRole,
   QueueInvite,
+  Notification,
   DiscordServerInfo,
   UserQueueSettings,
 } from '../types';
@@ -278,6 +279,20 @@ export const deviceApi = {
       method: 'DELETE',
       body: JSON.stringify({token, platform}),
     }),
+};
+
+// Notification API
+export const notificationApi = {
+  list: () => request<Notification[]>('/api/notifications/'),
+
+  markRead: (id: number) =>
+    request<Notification>(`/api/notifications/${id}/read`, {method: 'POST'}),
+
+  markAllRead: () =>
+    request<void>('/api/notifications/read-all', {method: 'POST'}),
+
+  delete: (id: number) =>
+    request<void>(`/api/notifications/${id}`, {method: 'DELETE'}),
 };
 
 // Invite API

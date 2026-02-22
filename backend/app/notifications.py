@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 
 from .fcm import send_notification, send_page
 from .models import (
+    Comment,
     DEFAULT_SCHEDULE,
     DeviceToken,
+    Notification,
     Ticket,
     TicketPriority,
     UserQueueSettings,
@@ -34,19 +36,38 @@ def _get_user_name(db: Session, user_id: int) -> str:
     return user.display_name if user else "Someone"
 
 
+def _create_notification(
+    db: Session,
+    user_id: int,
+    type: str,
+    title: str,
+    body: str,
+    ticket_id: int | None = None,
+) -> Notification:
+    notif = Notification(
+        user_id=user_id,
+        type=type,
+        title=title,
+        body=body,
+        ticket_id=ticket_id,
+    )
+    db.add(notif)
+    db.commit()
+    db.refresh(notif)
+    return notif
+
+
 def notify_ticket_assigned(db: Session, ticket: Ticket) -> None:
     """Notify assignee when they are assigned a ticket."""
     if ticket.assignee_id == ticket.assigner_id:
         return
     assigner_name = _get_user_name(db, ticket.assigner_id)
     priority = ticket.priority.value
+    title = f"[{priority}] Assigned to you"
+    body = f"{assigner_name} assigned you: {ticket.title}"
     data = {"type": "ticket_assigned", "ticket_id": str(ticket.id)}
-    _send_to_user(
-        db, ticket.assignee_id,
-        f"[{priority}] Assigned to you",
-        f"{assigner_name} assigned you: {ticket.title}",
-        data,
-    )
+    _send_to_user(db, ticket.assignee_id, title, body, data)
+    _create_notification(db, ticket.assignee_id, "assignment", title, body, ticket.id)
 
 
 def notify_ticket_reassigned(
@@ -56,20 +77,17 @@ def notify_ticket_reassigned(
     data = {"type": "ticket_reassigned", "ticket_id": str(ticket.id)}
     if old_assignee_id != new_assignee_id:
         new_name = _get_user_name(db, new_assignee_id)
-        _send_to_user(
-            db, old_assignee_id,
-            "Ticket Reassigned",
-            f"{ticket.title} reassigned to {new_name}",
-            data,
-        )
+        old_title = "Ticket Reassigned"
+        old_body = f"{ticket.title} reassigned to {new_name}"
+        _send_to_user(db, old_assignee_id, old_title, old_body, data)
+        _create_notification(db, old_assignee_id, "assignment", old_title, old_body, ticket.id)
+
         old_name = _get_user_name(db, old_assignee_id)
         priority = ticket.priority.value
-        _send_to_user(
-            db, new_assignee_id,
-            f"[{priority}] Assigned to you",
-            f"{ticket.title} (reassigned from {old_name})",
-            data,
-        )
+        new_title = f"[{priority}] Assigned to you"
+        new_body = f"{ticket.title} (reassigned from {old_name})"
+        _send_to_user(db, new_assignee_id, new_title, new_body, data)
+        _create_notification(db, new_assignee_id, "assignment", new_title, new_body, ticket.id)
 
 
 def _resolve_assigner_id(db: Session, ticket: Ticket) -> int:
@@ -87,33 +105,54 @@ def notify_status_changed(db: Session, ticket: Ticket, changed_by_id: int) -> No
     if changed_by_id == notify_id:
         return
     changer_name = _get_user_name(db, changed_by_id)
+    title = f"{ticket.title}"
+    body = f"{changer_name} changed status to {ticket.status.value}"
     data = {"type": "status_changed", "ticket_id": str(ticket.id)}
-    _send_to_user(
-        db, notify_id,
-        f"{ticket.title}",
-        f"{changer_name} changed status to {ticket.status.value}",
-        data,
-    )
+    _send_to_user(db, notify_id, title, body, data)
+    _create_notification(db, notify_id, "status_change", title, body, ticket.id)
 
 
 def notify_comment_added(
     db: Session, ticket: Ticket, commenter_id: int, comment_body: str,
 ) -> None:
-    """Notify assigner and assignee on comments (excluding own)."""
+    """Notify assigner, assignee, and prior commenters on comments (excluding own)."""
     from .models import User
     commenter = db.query(User).filter(User.id == commenter_id).first()
     commenter_name = commenter.display_name if commenter else "Someone"
     preview = comment_body[:100] + ("..." if len(comment_body) > 100 else "")
     data = {"type": "comment_added", "ticket_id": str(ticket.id)}
+    title = f"Comment on: {ticket.title}"
+    body = f"{commenter_name}: {preview}"
     assigner_id = _resolve_assigner_id(db, ticket)
-    recipients = {assigner_id, ticket.assignee_id} - {commenter_id}
+
+    # Gather all prior commenters (resolve on_behalf_of for bot comments)
+    prior_comments = (
+        db.query(Comment.user_id, Comment.on_behalf_of_id)
+        .filter(Comment.ticket_id == ticket.id)
+        .distinct()
+        .all()
+    )
+    prior_commenter_ids: set[int] = set()
+    for uid, on_behalf_of_id in prior_comments:
+        # Check if user is a bot with on_behalf_of
+        if on_behalf_of_id:
+            prior_commenter_ids.add(on_behalf_of_id)
+        else:
+            prior_commenter_ids.add(uid)
+
+    recipients = ({assigner_id, ticket.assignee_id} | prior_commenter_ids) - {commenter_id}
     for user_id in recipients:
-        _send_to_user(
-            db, user_id,
-            f"Comment on: {ticket.title}",
-            f"{commenter_name}: {preview}",
-            data,
-        )
+        _send_to_user(db, user_id, title, body, data)
+        _create_notification(db, user_id, "comment", title, body, ticket.id)
+
+
+def notify_escalation(db: Session, ticket: Ticket, old_priority: str, new_priority: str) -> None:
+    """Notify assignee when ticket is auto-escalated."""
+    title = f"Ticket Escalated: {ticket.title}"
+    body = f"Priority changed from {old_priority} to {new_priority}"
+    data = {"type": "escalation", "ticket_id": str(ticket.id)}
+    _send_to_user(db, ticket.assignee_id, title, body, data)
+    _create_notification(db, ticket.assignee_id, "escalation", title, body, ticket.id)
 
 
 def notify_queue_invite(db: Session, invite) -> None:
@@ -223,5 +262,10 @@ def trigger_page_for_ticket(db: Session, ticket: Ticket) -> None:
     for token in tokens:
         result = send_page(token, data)
         logger.warning("send_page result: %s", result)
+
+    # Create in-app page notification
+    title = f"[{ticket.priority.value}] Page: {ticket.title}"
+    body = f"You are being paged for {ticket.priority.value} ticket: {ticket.title}"
+    _create_notification(db, user_id, "page", title, body, ticket.id)
 
     logger.warning("Page sent for ticket %s (%s) to user %s", ticket.id, ticket.priority.value, user_id)
