@@ -4,6 +4,7 @@ import type { User, Queue } from "./types";
 import { api, queueApi, setDevModeUserId } from "./api/client";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ToastProvider } from "./components/Toast";
+import DocsLayout from "./components/docs/DocsLayout";
 import LoginPage from "./components/LoginPage";
 import QueueList from "./components/QueueList";
 import CreateQueue from "./components/CreateQueue";
@@ -17,11 +18,20 @@ import {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <AppContent />
-      </ToastProvider>
-    </AuthProvider>
+    <Routes>
+      <Route path="/docs" element={<DocsLayout />} />
+      <Route path="/docs/:section" element={<DocsLayout />} />
+      <Route
+        path="*"
+        element={
+          <AuthProvider>
+            <ToastProvider>
+              <AppContent />
+            </ToastProvider>
+          </AuthProvider>
+        }
+      />
+    </Routes>
   );
 }
 

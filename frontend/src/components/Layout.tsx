@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import type { User, Queue } from "../types";
 import UserSwitcher from "./UserSwitcher";
 import UserProfileMenu from "./UserProfileMenu";
@@ -93,15 +94,23 @@ export default function Layout({
               </span>
             )}
           </div>
-          {devMode ? (
-            <UserSwitcher
-              users={users}
-              currentUserId={currentUserId}
-              onChange={onUserChange}
-            />
-          ) : user ? (
-            <UserProfileMenu user={user} onLogout={onLogout} />
-          ) : null}
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Link
+              to="/docs"
+              className="text-stone-500 hover:text-stone-300 transition-colors text-sm hidden sm:inline"
+            >
+              Docs
+            </Link>
+            {devMode ? (
+              <UserSwitcher
+                users={users}
+                currentUserId={currentUserId}
+                onChange={onUserChange}
+              />
+            ) : user ? (
+              <UserProfileMenu user={user} onLogout={onLogout} />
+            ) : null}
+          </div>
         </div>
       </header>
       <main className="max-w-[1400px] mx-auto px-3 sm:px-6 py-4 sm:py-6">{children}</main>
