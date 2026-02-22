@@ -31,7 +31,8 @@ export const navigationRef = createNavigationContainerRef();
 export type RootStackParamList = {
   Login: undefined;
   QueueList: undefined;
-  MainTabs: {queueId: number; screen?: string};
+  CreateQueue: undefined;
+  MainTabs: {queueId: number};
   PageAlert: {
     ticketId: number;
     title: string;
@@ -55,7 +56,6 @@ export type NotificationsStackParamList = {
 
 export type SettingsStackParamList = {
   QueueSettings: {queueId: number};
-  CreateQueue: undefined;
   PageableHours: {queueId: number};
 };
 
@@ -128,11 +128,6 @@ function SettingsStackNavigator({queueId}: {queueId: number}) {
         component={QueueSettingsScreen}
         initialParams={{queueId}}
         options={{title: 'Settings'}}
-      />
-      <SettingsStack.Screen
-        name="CreateQueue"
-        component={CreateQueueScreen}
-        options={{title: 'New Queue'}}
       />
       <SettingsStack.Screen
         name="PageableHours"
@@ -297,6 +292,18 @@ export default function AppNavigator() {
         ) : (
           <>
             <RootStack.Screen name="QueueList" component={QueueListScreen} />
+            <RootStack.Screen
+              name="CreateQueue"
+              component={CreateQueueScreen}
+              options={{
+                headerShown: true,
+                title: 'New Queue',
+                headerStyle: {backgroundColor: colors.paper},
+                headerTintColor: colors.ink,
+                headerTitleStyle: {fontWeight: fontWeight.semibold, fontSize: fontSize.lg},
+                headerShadowVisible: false,
+              }}
+            />
             <RootStack.Screen
               name="MainTabs"
               component={MainTabNavigator as any}
