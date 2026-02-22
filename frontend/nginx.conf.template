@@ -10,6 +10,10 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Use relative redirects so nginx doesn't include the internal port
+    # in 301s when behind Railway's reverse proxy
+    absolute_redirect off;
+
     # Gzip compression
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml;
