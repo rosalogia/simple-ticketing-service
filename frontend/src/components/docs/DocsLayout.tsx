@@ -78,19 +78,41 @@ export default function DocsLayout() {
         </div>
       </header>
 
+      {/* Mobile nav dropdown — fixed below sticky header */}
+      {mobileNavOpen && (
+        <div className="fixed inset-x-0 top-14 z-30 lg:hidden">
+          <nav className="bg-paper border-b border-stone-200 shadow-md">
+            <ul className="max-w-[1100px] mx-auto px-3 sm:px-6 py-2 space-y-0.5">
+              {sections.map((s) => (
+                <li key={s.slug}>
+                  <Link
+                    to={s.slug === "overview" ? "/docs" : `/docs/${s.slug}`}
+                    onClick={() => setMobileNavOpen(false)}
+                    className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      activeSection === s.slug
+                        ? "bg-stone-100 text-ink font-medium"
+                        : "text-stone-500 hover:text-ink hover:bg-stone-50"
+                    }`}
+                  >
+                    {s.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
+      )}
+
       <div className="max-w-[1100px] mx-auto px-3 sm:px-6 py-6 lg:py-8">
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
-          {/* Sidebar */}
-          <nav
-            className={`lg:w-48 flex-shrink-0 ${mobileNavOpen ? "block" : "hidden"} lg:block`}
-          >
+          {/* Sidebar — desktop only */}
+          <nav className="hidden lg:block lg:w-48 flex-shrink-0">
             <div className="lg:sticky lg:top-20">
               <ul className="space-y-0.5">
                 {sections.map((s) => (
                   <li key={s.slug}>
                     <Link
                       to={s.slug === "overview" ? "/docs" : `/docs/${s.slug}`}
-                      onClick={() => setMobileNavOpen(false)}
                       className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
                         activeSection === s.slug
                           ? "bg-stone-100 text-ink font-medium"
