@@ -2,12 +2,33 @@ from __future__ import annotations
 
 import json
 import logging
+from enum import Enum
 
 from .config import FCM_ENABLED, FIREBASE_CREDENTIALS_JSON
 
 logger = logging.getLogger(__name__)
 
 _initialized = False
+
+
+class SendResult(Enum):
+    SUCCESS = "success"
+    FAILED = "failed"
+    TOKEN_INVALID = "token_invalid"
+
+
+def _is_token_invalid(exc: Exception) -> bool:
+    """Check if an FCM error indicates the device token is stale/unregistered."""
+    try:
+        from firebase_admin.exceptions import NotFoundError
+        from firebase_admin.messaging import UnregisteredError
+
+        if isinstance(exc, (UnregisteredError, NotFoundError)):
+            return True
+    except ImportError:
+        pass
+    error_str = str(exc).lower()
+    return "not found" in error_str or "unregistered" in error_str
 
 
 def init_fcm() -> None:
@@ -37,11 +58,11 @@ def send_notification(
     title: str,
     body: str,
     data: dict[str, str] | None = None,
-) -> bool:
+) -> SendResult:
     """Send a standard push notification (OS-displayed)."""
     if not _initialized:
         logger.debug("FCM not initialized, skipping notification")
-        return False
+        return SendResult.FAILED
     try:
         from firebase_admin import messaging
 
@@ -51,20 +72,23 @@ def send_notification(
             data=data or {},
         )
         messaging.send(message)
-        return True
+        return SendResult.SUCCESS
     except Exception as exc:
+        if _is_token_invalid(exc):
+            logger.warning("FCM send_notification: token invalid, should be removed: %s", exc)
+            return SendResult.TOKEN_INVALID
         logger.error("FCM send_notification failed: %s", exc)
-        return False
+        return SendResult.FAILED
 
 
 def send_page(
     token: str,
     data: dict[str, str],
-) -> bool:
+) -> SendResult:
     """Send a data-only high-priority FCM message for alarm-style display."""
     if not _initialized:
         logger.debug("FCM not initialized, skipping page")
-        return False
+        return SendResult.FAILED
     try:
         from firebase_admin import messaging
 
@@ -77,7 +101,10 @@ def send_page(
             ),
         )
         messaging.send(message)
-        return True
+        return SendResult.SUCCESS
     except Exception as exc:
+        if _is_token_invalid(exc):
+            logger.warning("FCM send_page: token invalid, should be removed: %s", exc)
+            return SendResult.TOKEN_INVALID
         logger.error("FCM send_page failed: %s", exc)
-        return False
+        return SendResult.FAILED

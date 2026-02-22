@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from .fcm import send_notification, send_page
+from .fcm import SendResult, send_notification, send_page
 from .models import (
     Comment,
     DEFAULT_SCHEDULE,
@@ -25,10 +25,18 @@ def _get_user_device_tokens(db: Session, user_id: int) -> list[str]:
     return [t[0] for t in tokens]
 
 
+def _remove_stale_token(db: Session, token: str) -> None:
+    db.query(DeviceToken).filter(DeviceToken.token == token).delete()
+    db.commit()
+    logger.info("Removed stale device token: %s…%s", token[:8], token[-4:])
+
+
 def _send_to_user(db: Session, user_id: int, title: str, body: str, data: dict[str, str] | None = None) -> None:
     tokens = _get_user_device_tokens(db, user_id)
     for token in tokens:
-        send_notification(token, title, body, data)
+        result = send_notification(token, title, body, data)
+        if result == SendResult.TOKEN_INVALID:
+            _remove_stale_token(db, token)
 
 
 def _get_user_name(db: Session, user_id: int) -> str:
@@ -395,17 +403,16 @@ def trigger_page_for_ticket(
         for token in tokens:
             result = send_notification(token, title, body, data)
             logger.warning("send_notification result: %s", result)
+            if result == SendResult.TOKEN_INVALID:
+                _remove_stale_token(db, token)
     else:
         for token in tokens:
             result = send_page(token, data)
             logger.warning("send_page result: %s", result)
+            if result == SendResult.TOKEN_INVALID:
+                _remove_stale_token(db, token)
 
     # Create in-app page notification
-    _create_notification(db, user_id, "page", title, body, ticket.id)
-
-    # Create in-app page notification
-    title = f"[{ticket.priority.value}] Page: {ticket.title}"
-    body = f"You are being paged for {ticket.priority.value} ticket: {ticket.title}"
     _create_notification(db, user_id, "page", title, body, ticket.id)
 
     logger.warning("Page sent for ticket %s (%s) to user %s", ticket.id, ticket.priority.value, user_id)
