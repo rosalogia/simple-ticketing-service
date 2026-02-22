@@ -98,6 +98,31 @@ def run_escalation_check() -> None:
         now = datetime.now(timezone.utc)
         today = now.date()
 
+        # Ensure escalation tracking exists for all tickets with due dates
+        # that are OPEN or IN_PROGRESS and not yet at SEV1
+        tickets_needing_tracking = (
+            db.query(Ticket)
+            .outerjoin(EscalationTracking, EscalationTracking.ticket_id == Ticket.id)
+            .filter(
+                Ticket.due_date.isnot(None),
+                Ticket.status.in_([TicketStatus.OPEN, TicketStatus.IN_PROGRESS]),
+                Ticket.priority != TicketPriority.SEV1,
+                EscalationTracking.id.is_(None),
+            )
+            .all()
+        )
+        for ticket in tickets_needing_tracking:
+            et = EscalationTracking(
+                ticket_id=ticket.id,
+                original_priority=ticket.priority,
+                escalation_count=0,
+                paused=False,
+            )
+            db.add(et)
+            logger.info("Created missing escalation tracking for ticket %d", ticket.id)
+        if tickets_needing_tracking:
+            db.commit()
+
         # Query all escalation tracking records that are not paused
         trackings = (
             db.query(EscalationTracking)
