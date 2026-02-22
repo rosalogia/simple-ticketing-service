@@ -17,7 +17,6 @@ from ..models import (
     User,
 )
 from ..schemas import (
-    AddMemberRequest,
     DiscordServerInfo,
     QueueCreate,
     QueueMemberResponse,
@@ -374,42 +373,6 @@ def list_members(
         .all()
     )
     return members
-
-
-@router.post("/{queue_id}/members", response_model=QueueMemberResponse, status_code=201)
-def add_member(
-    queue_id: int,
-    payload: AddMemberRequest,
-    db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
-):
-    _require_owner(db, queue_id, current_user_id)
-
-    if not db.query(User).filter(User.id == payload.user_id).first():
-        raise HTTPException(404, "User not found")
-
-    existing = (
-        db.query(QueueMember)
-        .filter(QueueMember.queue_id == queue_id, QueueMember.user_id == payload.user_id)
-        .first()
-    )
-    if existing:
-        raise HTTPException(409, "User is already a member")
-
-    member = QueueMember(
-        queue_id=queue_id, user_id=payload.user_id, role=payload.role
-    )
-    db.add(member)
-    db.commit()
-    db.refresh(member)
-
-    member = (
-        db.query(QueueMember)
-        .options(selectinload(QueueMember.user))
-        .filter(QueueMember.id == member.id)
-        .first()
-    )
-    return member
 
 
 @router.patch("/{queue_id}/members/{user_id}", response_model=QueueMemberResponse)

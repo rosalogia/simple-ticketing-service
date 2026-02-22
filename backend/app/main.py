@@ -17,7 +17,7 @@ from .database import SessionLocal, engine
 from .fcm import init_fcm
 from .models import User
 from .ratelimit import limiter
-from .routers import api_keys, auth, categories, comments, devices, queues, settings, tickets, users
+from .routers import api_keys, auth, categories, comments, devices, invites, queues, settings, tickets, users
 from .scheduler import start_scheduler, stop_scheduler
 
 logger = logging.getLogger(__name__)
@@ -107,6 +107,7 @@ app.include_router(comments.router, prefix="/api/tickets", tags=["comments"])
 app.include_router(categories.router, prefix="/api/categories", tags=["categories"])
 app.include_router(devices.router, prefix="/api/devices", tags=["devices"])
 app.include_router(settings.router, prefix="/api/queues", tags=["settings"])
+app.include_router(invites.router, prefix="/api", tags=["invites"])
 
 
 @app.exception_handler(Exception)

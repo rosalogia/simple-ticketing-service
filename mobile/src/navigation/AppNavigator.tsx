@@ -22,6 +22,7 @@ import QueueSettingsScreen from '../screens/QueueSettingsScreen';
 import CreateQueueScreen from '../screens/CreateQueueScreen';
 import PageableHoursScreen from '../screens/PageableHoursScreen';
 import PageAlertScreen from '../screens/PageAlertScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -48,6 +49,10 @@ export type HomeStackParamList = {
   CreateTicket: {queueId: number};
 };
 
+export type NotificationsStackParamList = {
+  Notifications: undefined;
+};
+
 export type SettingsStackParamList = {
   QueueSettings: {queueId: number};
   CreateQueue: undefined;
@@ -58,6 +63,7 @@ export type SettingsStackParamList = {
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
+const NotificationsStack = createNativeStackNavigator<NotificationsStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 const Tab = createBottomTabNavigator();
 
@@ -87,6 +93,24 @@ function HomeStackNavigator({queueId}: {queueId: number}) {
         options={{title: 'New Ticket'}}
       />
     </HomeStack.Navigator>
+  );
+}
+
+function NotificationsStackNavigator() {
+  return (
+    <NotificationsStack.Navigator
+      screenOptions={{
+        headerStyle: {backgroundColor: colors.paper},
+        headerTintColor: colors.ink,
+        headerTitleStyle: {fontWeight: fontWeight.semibold, fontSize: fontSize.lg},
+        headerShadowVisible: false,
+      }}>
+      <NotificationsStack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{title: 'Notifications'}}
+      />
+    </NotificationsStack.Navigator>
   );
 }
 
@@ -147,6 +171,17 @@ function MainTabNavigator({route}: {route: {params: {queueId: number}}}) {
         }}
       >
         {() => <HomeStackNavigator queueId={queueId} />}
+      </Tab.Screen>
+      <Tab.Screen
+        name="NotificationsTab"
+        options={{
+          title: 'Notifications',
+          tabBarIcon: ({color, size}) => (
+            <Icon name="bell-outline" size={size} color={color} />
+          ),
+        }}
+      >
+        {() => <NotificationsStackNavigator />}
       </Tab.Screen>
       <Tab.Screen
         name="SettingsTab"

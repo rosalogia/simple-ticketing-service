@@ -114,6 +114,14 @@ export interface UserQueueSettings {
   sev1_off_hours_opt_out: boolean;
 }
 
+export interface QueueInvite {
+  id: number;
+  queue: Queue;
+  role: QueueRole;
+  invited_by: User;
+  created_at: string;
+}
+
 export interface TicketFilters {
   queue_id?: number;
   status?: TicketStatus[];

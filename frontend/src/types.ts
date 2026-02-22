@@ -122,6 +122,14 @@ export interface ApiKeyCreateResponse extends ApiKey {
   key: string;
 }
 
+export interface QueueInvite {
+  id: number;
+  queue: Queue;
+  role: QueueRole;
+  invited_by: User;
+  created_at: string;
+}
+
 export interface TicketFilters {
   queue_id?: number;
   status?: TicketStatus[];
