@@ -403,4 +403,9 @@ def trigger_page_for_ticket(
     # Create in-app page notification
     _create_notification(db, user_id, "page", title, body, ticket.id)
 
+    # Create in-app page notification
+    title = f"[{ticket.priority.value}] Page: {ticket.title}"
+    body = f"You are being paged for {ticket.priority.value} ticket: {ticket.title}"
+    _create_notification(db, user_id, "page", title, body, ticket.id)
+
     logger.warning("Page sent for ticket %s (%s) to user %s", ticket.id, ticket.priority.value, user_id)

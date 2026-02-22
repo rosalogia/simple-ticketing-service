@@ -270,6 +270,9 @@ export const api = {
   acknowledgeTicket: (ticketId: number) =>
     request<{ status: string }>(`/api/tickets/${ticketId}/acknowledge`, { method: "POST" }),
 
+  acknowledgeTicket: (ticketId: number) =>
+    request<{ status: string }>(`/api/tickets/${ticketId}/acknowledge`, { method: "POST" }),
+
   // Categories
   getCategories: (queueId: number) =>
     request<CategoriesResponse>(`/api/categories/?queue_id=${queueId}`),
