@@ -103,7 +103,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install backend dependencies
-        run: uv sync
+        run: uv sync --extra postgres
         working-directory: backend
 
       - name: Set up Node
