@@ -8,12 +8,13 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from .database import SessionLocal
 from .models import (
     EscalationTracking,
+    Notification,
     PageTracking,
     Ticket,
     TicketPriority,
     TicketStatus,
 )
-from .notifications import trigger_page_for_ticket
+from .notifications import notify_escalation, trigger_page_for_ticket
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +182,8 @@ def run_escalation_check() -> None:
                 tracking.escalation_count += 1
                 db.commit()
 
+                notify_escalation(db, ticket, old_priority.value, new_priority.value)
+
                 logger.info(
                     "Escalated ticket %d from %s to %s (count: %d)",
                     ticket.id, old_priority.value, new_priority.value,
@@ -206,12 +209,29 @@ def run_escalation_check() -> None:
         db.close()
 
 
+def run_notification_cleanup() -> None:
+    """Delete notifications older than 7 days. Runs daily."""
+    db = SessionLocal()
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+        deleted = db.query(Notification).filter(Notification.created_at < cutoff).delete()
+        db.commit()
+        if deleted:
+            logger.info("Cleaned up %d expired notifications", deleted)
+    except Exception:
+        logger.exception("Error in notification cleanup")
+        db.rollback()
+    finally:
+        db.close()
+
+
 def start_scheduler() -> None:
     """Start the background scheduler with paging and escalation jobs."""
     scheduler.add_job(run_paging_check, "interval", minutes=1, id="paging_check", replace_existing=True)
     scheduler.add_job(run_escalation_check, "interval", minutes=30, id="escalation_check", replace_existing=True)
+    scheduler.add_job(run_notification_cleanup, "interval", hours=24, id="notification_cleanup", replace_existing=True)
     scheduler.start()
-    logger.info("Background scheduler started (paging: 1min, escalation: 30min)")
+    logger.info("Background scheduler started (paging: 1min, escalation: 30min, notification cleanup: 24h)")
 
 
 def stop_scheduler() -> None:

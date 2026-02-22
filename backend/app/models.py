@@ -262,6 +262,22 @@ class QueueInvite(Base):
     inviter: Mapped[User] = relationship(foreign_keys=[invited_by])
 
 
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    type: Mapped[str] = mapped_column(String(30))
+    title: Mapped[str] = mapped_column(String(300))
+    body: Mapped[str] = mapped_column(Text)
+    ticket_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), nullable=True, index=True)
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+
+    user: Mapped[User] = relationship()
+    ticket: Mapped[Optional[Ticket]] = relationship()
+
+
 class EscalationTracking(Base):
     __tablename__ = "escalation_tracking"
 

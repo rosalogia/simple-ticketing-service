@@ -11,6 +11,7 @@ import type {
   QueueMember,
   QueueRole,
   QueueInvite,
+  Notification,
   DiscordServerInfo,
   UserQueueSettings,
   WeekSchedule,
@@ -229,9 +230,26 @@ export const api = {
   pageTicket: (ticketId: number) =>
     request<Ticket>(`/api/tickets/${ticketId}/page`, { method: "POST" }),
 
+  acknowledgeTicket: (ticketId: number) =>
+    request<{ status: string }>(`/api/tickets/${ticketId}/acknowledge`, { method: "POST" }),
+
   // Categories
   getCategories: (queueId: number) =>
     request<CategoriesResponse>(`/api/categories/?queue_id=${queueId}`),
+};
+
+// Notification API
+export const notificationApi = {
+  list: () => request<Notification[]>("/api/notifications/"),
+
+  markRead: (id: number) =>
+    request<Notification>(`/api/notifications/${id}/read`, { method: "POST" }),
+
+  markAllRead: () =>
+    request<void>("/api/notifications/read-all", { method: "POST" }),
+
+  delete: (id: number) =>
+    request<void>(`/api/notifications/${id}`, { method: "DELETE" }),
 };
 
 // Invite API
