@@ -140,6 +140,17 @@ export interface Notification {
   created_at: string;
 }
 
+export interface PageBlockedInfo {
+  status: "off_hours";
+  pageable_hours_resume_at: string | null;
+  assignee_name: string;
+  assignee_timezone: string;
+}
+
+export type PageResult =
+  | { ok: true; ticket: Ticket }
+  | { ok: false; blocked: PageBlockedInfo };
+
 export interface TicketFilters {
   queue_id?: number;
   status?: TicketStatus[];

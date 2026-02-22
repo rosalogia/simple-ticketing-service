@@ -14,6 +14,8 @@ import type {
   Notification,
   DiscordServerInfo,
   UserQueueSettings,
+  PageBlockedInfo,
+  PageResult,
 } from '../types';
 
 // Base URL — full URL required for mobile (no relative paths)
@@ -257,8 +259,47 @@ export const api = {
   escalateTicket: (ticketId: number) =>
     request<Ticket>(`/api/tickets/${ticketId}/escalate`, {method: 'POST'}),
 
-  pageTicket: (ticketId: number) =>
-    request<Ticket>(`/api/tickets/${ticketId}/page`, {method: 'POST'}),
+  pageTicket: async (
+    ticketId: number,
+    options?: {force?: boolean; notifyOnly?: boolean},
+  ): Promise<PageResult> => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (_token) {
+      headers['Authorization'] = `Bearer ${_token}`;
+    }
+    const body: Record<string, boolean> = {};
+    if (options?.force) body.force = true;
+    if (options?.notifyOnly) body.notify_only = true;
+
+    const response = await fetch(`${API_BASE}/api/tickets/${ticketId}/page`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (response.status === 409) {
+      const blocked: PageBlockedInfo = await response.json();
+      return {ok: false, blocked};
+    }
+
+    if (response.status === 401) {
+      _token = null;
+      _onSessionExpired?.();
+      throw new Error('Session expired');
+    }
+
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({detail: response.statusText}));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    const ticket: Ticket = await response.json();
+    return {ok: true, ticket};
+  },
 
   acknowledgeTicket: (ticketId: number) =>
     request<{status: string}>(`/api/tickets/${ticketId}/acknowledge`, {

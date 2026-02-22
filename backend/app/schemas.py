@@ -247,6 +247,11 @@ class NotificationResponse(BaseModel):
 # ── Device Tokens ─────────────────────────────────────────────────────
 
 
+class PageRequest(BaseModel):
+    force: bool = False
+    notify_only: bool = False
+
+
 class DeviceTokenCreate(BaseModel):
     token: str = Field(..., min_length=1, max_length=500)
     platform: str = Field(..., pattern="^(android|ios)$")

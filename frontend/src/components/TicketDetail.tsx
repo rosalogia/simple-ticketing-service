@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { Ticket, Comment as CommentType, QueueMember, TicketStatus } from "../types";
+import type { Ticket, Comment as CommentType, QueueMember, TicketStatus, PageBlockedInfo } from "../types";
 import { api, queueApi } from "../api/client";
 import { useToast } from "./Toast";
 import CommentThread from "./CommentThread";
@@ -126,6 +126,7 @@ export default function TicketDetail({
   const [saving, setSaving] = useState(false);
   const [escalating, setEscalating] = useState(false);
   const [paging, setPaging] = useState(false);
+  const [pageBlocked, setPageBlocked] = useState<PageBlockedInfo | null>(null);
   const { showError } = useToast();
 
   const loadTicket = useCallback(() => {
@@ -478,9 +479,14 @@ export default function TicketDetail({
                       disabled={paging}
                       onClick={async () => {
                         setPaging(true);
+                        setPageBlocked(null);
                         try {
-                          await api.pageTicket(ticketId);
-                          loadTicket();
+                          const result = await api.pageTicket(ticketId);
+                          if (result.ok) {
+                            setTicket(result.ticket);
+                          } else {
+                            setPageBlocked(result.blocked);
+                          }
                         } catch (err) {
                           showError(err instanceof Error ? err.message : "Failed to page");
                         } finally {
@@ -491,6 +497,67 @@ export default function TicketDetail({
                     >
                       {paging ? "Paging…" : "Page Now"}
                     </button>
+                    {pageBlocked && (
+                      <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs">
+                        <p className="text-amber-800 font-medium mb-1">
+                          {pageBlocked.assignee_name} is outside their pageable hours
+                        </p>
+                        <p className="text-amber-600 mb-2">
+                          Timezone: {pageBlocked.assignee_timezone}
+                          {pageBlocked.pageable_hours_resume_at && (
+                            <> · Resumes {new Date(pageBlocked.pageable_hours_resume_at).toLocaleString()}</>
+                          )}
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            disabled={paging}
+                            onClick={async () => {
+                              setPaging(true);
+                              try {
+                                const result = await api.pageTicket(ticketId, { force: true });
+                                if (result.ok) {
+                                  setTicket(result.ticket);
+                                  setPageBlocked(null);
+                                }
+                              } catch (err) {
+                                showError(err instanceof Error ? err.message : "Failed to page");
+                              } finally {
+                                setPaging(false);
+                              }
+                            }}
+                            className="px-2 py-1 rounded bg-sev1-bg text-sev1 font-medium hover:bg-red-200 disabled:opacity-50"
+                          >
+                            Page Anyway
+                          </button>
+                          <button
+                            disabled={paging}
+                            onClick={async () => {
+                              setPaging(true);
+                              try {
+                                const result = await api.pageTicket(ticketId, { notifyOnly: true });
+                                if (result.ok) {
+                                  setTicket(result.ticket);
+                                  setPageBlocked(null);
+                                }
+                              } catch (err) {
+                                showError(err instanceof Error ? err.message : "Failed to send notification");
+                              } finally {
+                                setPaging(false);
+                              }
+                            }}
+                            className="px-2 py-1 rounded bg-blue-50 text-blue-700 font-medium hover:bg-blue-100 disabled:opacity-50"
+                          >
+                            Send Notification
+                          </button>
+                          <button
+                            onClick={() => setPageBlocked(null)}
+                            className="px-2 py-1 rounded bg-stone-100 text-stone-500 font-medium hover:bg-stone-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

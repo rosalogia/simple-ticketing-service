@@ -354,8 +354,45 @@ export default function TicketDetailScreen({route, navigation}: Props) {
               onPress={async () => {
                 setPaging(true);
                 try {
-                  const updated = await api.pageTicket(ticket.id);
-                  setTicket(updated);
+                  const result = await api.pageTicket(ticket.id);
+                  if (result.ok) {
+                    setTicket(result.ticket);
+                  } else {
+                    const info = result.blocked;
+                    const resumeText = info.pageable_hours_resume_at
+                      ? `\nResumes: ${new Date(info.pageable_hours_resume_at).toLocaleString()}`
+                      : '';
+                    Alert.alert(
+                      'Outside Pageable Hours',
+                      `${info.assignee_name} is outside their pageable hours.\nTimezone: ${info.assignee_timezone}${resumeText}`,
+                      [
+                        {
+                          text: 'Send Notification',
+                          onPress: async () => {
+                            try {
+                              const r = await api.pageTicket(ticket.id, {notifyOnly: true});
+                              if (r.ok) setTicket(r.ticket);
+                            } catch (e: any) {
+                              Alert.alert('Error', e?.message ?? 'Failed to send notification');
+                            }
+                          },
+                        },
+                        {
+                          text: 'Page Anyway',
+                          style: 'destructive',
+                          onPress: async () => {
+                            try {
+                              const r = await api.pageTicket(ticket.id, {force: true});
+                              if (r.ok) setTicket(r.ticket);
+                            } catch (e: any) {
+                              Alert.alert('Error', e?.message ?? 'Failed to page');
+                            }
+                          },
+                        },
+                        {text: 'Cancel', style: 'cancel'},
+                      ],
+                    );
+                  }
                 } catch (err: any) {
                   Alert.alert('Error', err?.message ?? 'Failed to page');
                 } finally {
