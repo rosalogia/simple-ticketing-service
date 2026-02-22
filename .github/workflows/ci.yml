@@ -218,6 +218,7 @@ jobs:
         run: scripts/reset-test-db.sh
         env:
           CI: "true"
+          DEBUG: "true"
           PGUSER: sts
           PGPASSWORD: test
           DATABASE_URL: "postgresql://sts:test@localhost:5432/sts_e2e"
