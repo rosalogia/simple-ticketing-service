@@ -36,7 +36,7 @@ class TestValidateApiKey:
         }
         request = Request(scope)
         result = _validate_api_key(request, db_session)
-        assert result == test_user.id
+        assert result == (test_user.id, api_key.bot_user_id)
 
     def test_valid_api_key_updates_last_used(self, db_session, test_user):
         raw_key = "sts_test_key_67890"

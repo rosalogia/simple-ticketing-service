@@ -13,8 +13,8 @@ if (!STS_API_URL || !STS_API_KEY) {
 
 const client = new StsClient(STS_API_URL, STS_API_KEY);
 
-// Resolved at startup — the "Claude" bot user ID for ticket attribution
-let botUserId: number | undefined;
+// Resolved at startup — the authenticated user's ID for on_behalf_of attribution
+let myUserId: number | undefined;
 
 const server = new McpServer({
   name: "sts",
@@ -135,7 +135,7 @@ server.tool(
   async (params) => {
     const ticket = await client.createTicket({
       ...params,
-      ...(botUserId !== undefined ? { on_behalf_of: botUserId } : {}),
+      ...(myUserId !== undefined ? { on_behalf_of: myUserId } : {}),
     });
     return {
       content: [
@@ -216,7 +216,7 @@ server.tool(
     content: z.string().describe("Comment text"),
   },
   async ({ ticket_id, content }) => {
-    const comment = await client.addComment(ticket_id, content, botUserId);
+    const comment = await client.addComment(ticket_id, content, myUserId);
     return {
       content: [
         {
@@ -269,18 +269,17 @@ server.tool(
 // ── Start server ──────────────────────────────────────────────────────
 
 async function main() {
-  // Discover the Claude bot user for ticket attribution
+  // Discover the authenticated user's ID for on_behalf_of attribution
   try {
-    const users = await client.listUsers();
-    const bot = users.find((u) => u.username === "claude-bot");
-    if (bot) {
-      botUserId = bot.id;
-      console.error(`[sts] Using bot user: ${bot.display_name} (id=${bot.id})`);
+    const me = await client.getMe();
+    if (me.authenticated && me.user) {
+      myUserId = me.user.id;
+      console.error(`[sts] Authenticated as: ${me.user.display_name} (id=${me.user.id})`);
     } else {
-      console.error("[sts] Warning: claude-bot user not found, tickets will be attributed to API key owner");
+      console.error("[sts] Warning: not authenticated, on_behalf_of will not be set");
     }
   } catch (err) {
-    console.error("[sts] Warning: could not look up bot user:", err);
+    console.error("[sts] Warning: could not look up current user:", err);
   }
 
   const transport = new StdioServerTransport();

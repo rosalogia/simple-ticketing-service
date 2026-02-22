@@ -59,6 +59,10 @@ export class StsClient {
     return this.request<User[]>("GET", "/users");
   }
 
+  async getMe(): Promise<{ authenticated: boolean; user?: User }> {
+    return this.request<{ authenticated: boolean; user?: User }>("GET", "/auth/me");
+  }
+
   // ── Queues ──────────────────────────────────────────────────────────
 
   async listQueues(): Promise<Queue[]> {

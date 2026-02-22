@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user_id
 from ..database import get_db
-from ..models import ApiKey
+from ..models import ApiKey, User
 from ..schemas import ApiKeyCreate, ApiKeyCreateResponse, ApiKeyResponse
 
 router = APIRouter()
@@ -36,6 +36,17 @@ def create_api_key(
         user_id=current_user_id,
     )
     db.add(api_key)
+    db.flush()  # Get api_key.id for bot username
+
+    # Auto-create a bot user linked to this API key
+    bot_user = User(
+        username=f"bot-{api_key.id}",
+        display_name=payload.name,
+        is_bot=True,
+    )
+    db.add(bot_user)
+    db.flush()
+    api_key.bot_user_id = bot_user.id
     db.commit()
     db.refresh(api_key)
 

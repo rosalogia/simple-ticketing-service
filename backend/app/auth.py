@@ -28,7 +28,7 @@ def _validate_api_key(request: Request, db: DBSession) -> int | None:
 
     api_key.last_used_at = datetime.now(timezone.utc)
     db.commit()
-    return api_key.user_id
+    return api_key.user_id, api_key.bot_user_id
 
 
 def _get_session_id_from_request(request: Request) -> str | None:
@@ -61,9 +61,11 @@ def get_current_user_id(
         # Fall through to API key / Bearer token auth
 
     # API key auth (MCP server, CLI tools, etc.)
-    api_key_user_id = _validate_api_key(request, db)
-    if api_key_user_id is not None:
+    result = _validate_api_key(request, db)
+    if result is not None:
+        api_key_user_id, bot_user_id = result
         request.state.api_key_auth = True
+        request.state.api_key_bot_user_id = bot_user_id
         return api_key_user_id
 
     session_id = _get_session_id_from_request(request)
@@ -91,9 +93,11 @@ def get_optional_user_id(
         # Fall through to API key / Bearer token auth
 
     # API key auth (MCP server, CLI tools, etc.)
-    api_key_user_id = _validate_api_key(request, db)
-    if api_key_user_id is not None:
+    result = _validate_api_key(request, db)
+    if result is not None:
+        api_key_user_id, bot_user_id = result
         request.state.api_key_auth = True
+        request.state.api_key_bot_user_id = bot_user_id
         return api_key_user_id
 
     session_id = _get_session_id_from_request(request)

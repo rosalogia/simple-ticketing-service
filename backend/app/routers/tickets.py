@@ -352,11 +352,17 @@ def create_ticket(
     assigner_id = current_user_id
     on_behalf_of_id = None
     if payload.on_behalf_of is not None and getattr(request.state, "api_key_auth", False):
-        bot_user = db.query(User).filter(User.id == payload.on_behalf_of).first()
-        if not bot_user:
+        obo_user = db.query(User).filter(User.id == payload.on_behalf_of).first()
+        if not obo_user:
             raise HTTPException(400, "on_behalf_of user not found")
-        assigner_id = payload.on_behalf_of
-        on_behalf_of_id = current_user_id  # The API key holder
+        bot_user_id = getattr(request.state, "api_key_bot_user_id", None)
+        if bot_user_id:
+            assigner_id = bot_user_id
+            on_behalf_of_id = payload.on_behalf_of
+        else:
+            # Fallback for pre-existing API keys without bot users
+            assigner_id = current_user_id
+            on_behalf_of_id = payload.on_behalf_of
 
     ticket = Ticket(**payload.model_dump(exclude={"on_behalf_of"}), assigner_id=assigner_id, on_behalf_of_id=on_behalf_of_id)
     db.add(ticket)
