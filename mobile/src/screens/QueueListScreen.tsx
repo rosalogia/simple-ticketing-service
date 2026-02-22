@@ -93,7 +93,7 @@ export default function QueueListScreen({navigation}: Props) {
       />
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('MainTabs', {queueId: -1, screen: 'CreateQueue'})}>
+        onPress={() => navigation.navigate('CreateQueue')}>
         <Text style={styles.fabText}>+ New Queue</Text>
       </TouchableOpacity>
     </SafeAreaView>

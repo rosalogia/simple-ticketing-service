@@ -13,10 +13,10 @@ import {
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {queueApi} from '../api/client';
 import type {DiscordServerInfo} from '../types';
-import type {SettingsStackParamList} from '../navigation/AppNavigator';
+import type {RootStackParamList} from '../navigation/AppNavigator';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '../theme';
 
-type Props = NativeStackScreenProps<SettingsStackParamList, 'CreateQueue'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'CreateQueue'>;
 
 type TabType = 'manual' | 'discord';
 
