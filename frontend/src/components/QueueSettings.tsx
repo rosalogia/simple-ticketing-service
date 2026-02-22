@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Queue, QueueMember, QueueRole, User, WeekSchedule } from "../types";
-import { queueApi, api } from "../api/client";
+import type { Queue, QueueMember, QueueRole, WeekSchedule } from "../types";
+import { queueApi } from "../api/client";
 import { useToast } from "./Toast";
 
 const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
@@ -54,14 +54,14 @@ export default function QueueSettings({
 }: Props) {
   const [queue, setQueue] = useState<Queue | null>(null);
   const [members, setMembers] = useState<QueueMember[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editMaxSev, setEditMaxSev] = useState<string>("SEV1");
   const [saving, setSaving] = useState(false);
-  const [addUserId, setAddUserId] = useState<number | "">("");
+  const [inviteUsername, setInviteUsername] = useState("");
   const [addRole, setAddRole] = useState<QueueRole>("MEMBER");
+  const [inviting, setInviting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [schedule, setSchedule] = useState<WeekSchedule>(DEFAULT_SCHEDULE);
@@ -78,7 +78,6 @@ export default function QueueSettings({
       setEditMaxSev(q.member_max_severity);
     });
     queueApi.getMembers(queueId).then(setMembers);
-    api.getUsers().then(setAllUsers);
     queueApi.getMySettings(queueId).then((s) => {
       setSchedule(s.schedule || DEFAULT_SCHEDULE);
       setSettingsTz(s.timezone);
@@ -126,15 +125,18 @@ export default function QueueSettings({
     }
   };
 
-  const handleAddMember = async () => {
-    if (addUserId === "") return;
+  const handleInvite = async () => {
+    if (!inviteUsername.trim()) return;
+    setInviting(true);
     try {
-      await queueApi.addMember(queueId, Number(addUserId), addRole);
-      setAddUserId("");
+      await queueApi.inviteMember(queueId, inviteUsername.trim(), addRole);
+      setInviteUsername("");
       setAddRole("MEMBER");
-      loadData();
+      showError("Invitation sent!");
     } catch (err) {
       showError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setInviting(false);
     }
   };
 
@@ -184,9 +186,6 @@ export default function QueueSettings({
       </div>
     );
   }
-
-  const memberUserIds = new Set(members.map((m) => m.user.id));
-  const nonMembers = allUsers.filter((u) => !memberUserIds.has(u.id));
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -471,39 +470,35 @@ export default function QueueSettings({
           ))}
         </div>
 
-        {/* Add member */}
-        {nonMembers.length > 0 && (
-          <div className="flex items-center gap-2 pt-3 border-t border-stone-100">
-            <select
-              value={addUserId}
-              onChange={(e) => setAddUserId(e.target.value ? Number(e.target.value) : "")}
-              className="flex-1 px-2.5 py-1.5 text-sm border border-stone-200 rounded-lg bg-paper-warm focus:outline-none focus:ring-1 focus:ring-accent/30"
-            >
-              <option value="">Add a member...</option>
-              {nonMembers.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.display_name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={addRole}
-              onChange={(e) => setAddRole(e.target.value as QueueRole)}
-              className="px-2.5 py-1.5 text-sm border border-stone-200 rounded-lg bg-paper-warm focus:outline-none focus:ring-1 focus:ring-accent/30"
-            >
-              <option value="MEMBER">Member</option>
-              <option value="VIEWER">Viewer</option>
-              <option value="OWNER">Owner</option>
-            </select>
-            <button
-              onClick={handleAddMember}
-              disabled={addUserId === ""}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-40 rounded-lg transition-colors"
-            >
-              Add
-            </button>
-          </div>
-        )}
+        {/* Invite member */}
+        <div className="flex items-center gap-2 pt-3 border-t border-stone-100">
+          <input
+            type="text"
+            value={inviteUsername}
+            onChange={(e) => setInviteUsername(e.target.value)}
+            placeholder="Username to invite..."
+            className="flex-1 px-2.5 py-1.5 text-sm border border-stone-200 rounded-lg bg-paper-warm focus:outline-none focus:ring-1 focus:ring-accent/30"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleInvite();
+            }}
+          />
+          <select
+            value={addRole}
+            onChange={(e) => setAddRole(e.target.value as QueueRole)}
+            className="px-2.5 py-1.5 text-sm border border-stone-200 rounded-lg bg-paper-warm focus:outline-none focus:ring-1 focus:ring-accent/30"
+          >
+            <option value="MEMBER">Member</option>
+            <option value="VIEWER">Viewer</option>
+            <option value="OWNER">Owner</option>
+          </select>
+          <button
+            onClick={handleInvite}
+            disabled={!inviteUsername.trim() || inviting}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-40 rounded-lg transition-colors"
+          >
+            {inviting ? "Inviting..." : "Invite"}
+          </button>
+        </div>
       </div>
 
       {/* Danger zone */}

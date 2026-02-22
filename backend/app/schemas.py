@@ -102,6 +102,21 @@ class AddMemberRequest(BaseModel):
     role: QueueRole = QueueRole.MEMBER
 
 
+class InviteMemberRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=50)
+    role: QueueRole = QueueRole.MEMBER
+
+
+class QueueInviteResponse(BaseModel):
+    id: int
+    queue: QueueResponse
+    role: QueueRole
+    invited_by: UserResponse
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UpdateMemberRequest(BaseModel):
     role: QueueRole
 

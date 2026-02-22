@@ -77,20 +77,32 @@ class TestDeleteQueue:
 
 
 class TestMembers:
-    def test_add_member(self, client, other_user, test_queue):
+    def test_add_member_via_invite(self, client, auth_as, other_user, test_queue, test_user):
+        # Owner invites
+        resp = client.post(
+            f"/api/queues/{test_queue.id}/invites",
+            json={"username": other_user.username, "role": "MEMBER"},
+        )
+        assert resp.status_code == 201
+        invite_id = resp.json()["id"]
+
+        # Invitee accepts
+        auth_as(other_user)
+        resp = client.post(f"/api/invites/{invite_id}/accept")
+        assert resp.status_code == 200
+
+        # Verify membership
+        auth_as(test_user)
+        resp = client.get(f"/api/queues/{test_queue.id}/members")
+        user_ids = [m["user"]["id"] for m in resp.json()]
+        assert other_user.id in user_ids
+
+    def test_direct_add_member_removed(self, client, other_user, test_queue):
         resp = client.post(
             f"/api/queues/{test_queue.id}/members",
             json={"user_id": other_user.id, "role": "MEMBER"},
         )
-        assert resp.status_code == 201
-        assert resp.json()["role"] == "MEMBER"
-
-    def test_duplicate_add_fails(self, client, member_user, test_queue):
-        resp = client.post(
-            f"/api/queues/{test_queue.id}/members",
-            json={"user_id": member_user.id, "role": "MEMBER"},
-        )
-        assert resp.status_code == 409
+        assert resp.status_code == 405
 
     def test_update_member_role(self, client, member_user, test_queue):
         resp = client.patch(

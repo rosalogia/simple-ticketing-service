@@ -116,6 +116,19 @@ def notify_comment_added(
         )
 
 
+def notify_queue_invite(db: Session, invite) -> None:
+    """Notify invitee when they are invited to a queue."""
+    inviter_name = _get_user_name(db, invite.invited_by)
+    queue_name = invite.queue.name if invite.queue else "a queue"
+    data = {"type": "queue_invite", "invite_id": str(invite.id)}
+    _send_to_user(
+        db, invite.user_id,
+        "Queue Invitation",
+        f"{inviter_name} invited you to {queue_name}",
+        data,
+    )
+
+
 def _is_within_pageable_hours(
     db: Session, user_id: int, queue_id: int
 ) -> bool:

@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user_id, get_optional_user_id
+from ..config import DEBUG
 from ..database import get_db
-from ..models import User
+from ..models import QueueMember, User
 from ..schemas import UserCreate, UserResponse, UserUpdate
 
 router = APIRouter()
@@ -12,9 +13,33 @@ router = APIRouter()
 @router.get("/", response_model=list[UserResponse])
 def list_users(
     db: Session = Depends(get_db),
-    _current_user_id: int | None = Depends(get_optional_user_id),
+    current_user_id: int | None = Depends(get_optional_user_id),
 ):
-    return db.query(User).filter(User.is_bot == False).order_by(User.display_name).all()
+    # In dev mode, return all users so the user switcher works
+    if DEBUG:
+        return db.query(User).filter(User.is_bot == False).order_by(User.display_name).all()
+
+    if current_user_id is None:
+        return []
+
+    # Return only users who share at least one queue with the caller
+    my_queue_ids = (
+        db.query(QueueMember.queue_id)
+        .filter(QueueMember.user_id == current_user_id)
+        .subquery()
+    )
+    shared_users = (
+        db.query(User)
+        .join(QueueMember, QueueMember.user_id == User.id)
+        .filter(
+            QueueMember.queue_id.in_(db.query(my_queue_ids.c.queue_id)),
+            User.is_bot == False,
+        )
+        .distinct()
+        .order_by(User.display_name)
+        .all()
+    )
+    return shared_users
 
 
 @router.post("/", response_model=UserResponse, status_code=201)

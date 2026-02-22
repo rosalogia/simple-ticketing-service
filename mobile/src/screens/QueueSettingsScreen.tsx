@@ -10,9 +10,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {queueApi, api} from '../api/client';
+import {queueApi} from '../api/client';
 import {useAuth} from '../auth/AuthContext';
-import type {Queue, QueueMember, QueueRole, User} from '../types';
+import type {Queue, QueueMember, QueueRole} from '../types';
 import type {SettingsStackParamList} from '../navigation/AppNavigator';
 import MemberRow from '../components/MemberRow';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '../theme';
@@ -25,22 +25,21 @@ export default function QueueSettingsScreen({route, navigation}: Props) {
 
   const [queue, setQueue] = useState<Queue | null>(null);
   const [members, setMembers] = useState<QueueMember[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [inviteUsername, setInviteUsername] = useState('');
+  const [inviting, setInviting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const [q, m, u] = await Promise.all([
+      const [q, m] = await Promise.all([
         queueApi.getQueue(queueId),
         queueApi.getMembers(queueId),
-        api.getUsers(),
       ]);
       setQueue(q);
       setMembers(m);
-      setAllUsers(u);
       setName(q.name);
       setDescription(q.description || '');
     } catch (e: any) {
@@ -85,28 +84,19 @@ export default function QueueSettingsScreen({route, navigation}: Props) {
     }
   };
 
-  const handleAddMember = () => {
-    const memberIds = new Set(members.map(m => m.user.id));
-    const available = allUsers.filter(u => !memberIds.has(u.id));
-    if (!available.length) {
-      Alert.alert('No users available', 'All users are already members.');
-      return;
+  const handleInvite = async () => {
+    const username = inviteUsername.trim();
+    if (!username) return;
+    setInviting(true);
+    try {
+      await queueApi.inviteMember(queueId, username);
+      setInviteUsername('');
+      Alert.alert('Success', 'Invitation sent!');
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setInviting(false);
     }
-    const options = available.map(u => ({
-      text: u.display_name,
-      onPress: async () => {
-        try {
-          await queueApi.addMember(queueId, u.id);
-          load();
-        } catch (e: any) {
-          Alert.alert('Error', e.message);
-        }
-      },
-    }));
-    Alert.alert('Add Member', 'Select user to add', [
-      ...options,
-      {text: 'Cancel', style: 'cancel'},
-    ]);
   };
 
   const handleSyncDiscord = async () => {
@@ -196,16 +186,9 @@ export default function QueueSettingsScreen({route, navigation}: Props) {
 
       {/* Members */}
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            Members ({members.length})
-          </Text>
-          {myRole === 'OWNER' && (
-            <TouchableOpacity onPress={handleAddMember}>
-              <Text style={styles.addText}>+ Add</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <Text style={styles.sectionTitle}>
+          Members ({members.length})
+        </Text>
         {members.map(m => (
           <MemberRow
             key={m.id}
@@ -215,6 +198,27 @@ export default function QueueSettingsScreen({route, navigation}: Props) {
             onRemove={handleRemoveMember}
           />
         ))}
+        {myRole === 'OWNER' && (
+          <View style={styles.inviteRow}>
+            <TextInput
+              style={styles.inviteInput}
+              value={inviteUsername}
+              onChangeText={setInviteUsername}
+              placeholder="Username to invite..."
+              autoCapitalize="none"
+              autoCorrect={false}
+              onSubmitEditing={handleInvite}
+            />
+            <TouchableOpacity
+              style={[styles.inviteButton, (!inviteUsername.trim() || inviting) && styles.inviteButtonDisabled]}
+              onPress={handleInvite}
+              disabled={!inviteUsername.trim() || inviting}>
+              <Text style={styles.inviteButtonText}>
+                {inviting ? '...' : 'Invite'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Paging Settings */}
@@ -331,8 +335,36 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
     fontWeight: fontWeight.medium,
   },
-  addText: {
-    color: colors.accent,
+  inviteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.stone100,
+  },
+  inviteInput: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.stone200,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: fontSize.md,
+    color: colors.ink,
+  },
+  inviteButton: {
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  inviteButtonDisabled: {
+    opacity: 0.4,
+  },
+  inviteButtonText: {
+    color: colors.white,
     fontWeight: fontWeight.semibold,
     fontSize: fontSize.md,
   },

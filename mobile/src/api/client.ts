@@ -10,6 +10,7 @@ import type {
   Queue,
   QueueMember,
   QueueRole,
+  QueueInvite,
   DiscordServerInfo,
   UserQueueSettings,
 } from '../types';
@@ -128,10 +129,10 @@ export const queueApi = {
   getMembers: (queueId: number) =>
     request<QueueMember[]>(`/api/queues/${queueId}/members`),
 
-  addMember: (queueId: number, userId: number, role: QueueRole = 'MEMBER') =>
-    request<QueueMember>(`/api/queues/${queueId}/members`, {
+  inviteMember: (queueId: number, username: string, role: QueueRole = 'MEMBER') =>
+    request<QueueInvite>(`/api/queues/${queueId}/invites`, {
       method: 'POST',
-      body: JSON.stringify({user_id: userId, role}),
+      body: JSON.stringify({username, role}),
     }),
 
   updateMemberRole: (queueId: number, userId: number, role: QueueRole) =>
@@ -277,6 +278,17 @@ export const deviceApi = {
       method: 'DELETE',
       body: JSON.stringify({token, platform}),
     }),
+};
+
+// Invite API
+export const inviteApi = {
+  getMyInvites: () => request<QueueInvite[]>('/api/invites'),
+
+  acceptInvite: (inviteId: number) =>
+    request<QueueInvite>(`/api/invites/${inviteId}/accept`, {method: 'POST'}),
+
+  declineInvite: (inviteId: number) =>
+    request<void>(`/api/invites/${inviteId}/decline`, {method: 'POST'}),
 };
 
 // Queue Settings API

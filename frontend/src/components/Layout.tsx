@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { User, Queue } from "../types";
 import UserSwitcher from "./UserSwitcher";
 import UserProfileMenu from "./UserProfileMenu";
+import NotificationsDropdown from "./NotificationsDropdown";
 
 interface Props {
   user: User | null;
@@ -16,6 +17,7 @@ interface Props {
   onSwitchQueue: (id: number) => void;
   onShowQueues: () => void;
   onShowSettings: () => void;
+  onInviteAccepted: () => void;
   children: ReactNode;
 }
 
@@ -31,6 +33,7 @@ export default function Layout({
   onSwitchQueue,
   onShowQueues,
   onShowSettings,
+  onInviteAccepted,
   children,
 }: Props) {
   return (
@@ -101,6 +104,9 @@ export default function Layout({
             >
               Docs
             </Link>
+            {user && (
+              <NotificationsDropdown onInviteAccepted={onInviteAccepted} />
+            )}
             {devMode ? (
               <UserSwitcher
                 users={users}

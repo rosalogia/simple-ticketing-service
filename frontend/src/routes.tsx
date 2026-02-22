@@ -15,6 +15,7 @@ interface LayoutWrapperProps {
   onUserChange: (id: number) => void;
   onLogout: () => void;
   queues: Queue[];
+  onInviteAccepted: () => void;
 }
 
 export function LayoutWrapper({
@@ -25,6 +26,7 @@ export function LayoutWrapper({
   onUserChange,
   onLogout,
   queues,
+  onInviteAccepted,
 }: LayoutWrapperProps) {
   const { queueId } = useParams();
   const navigate = useNavigate();
@@ -47,6 +49,7 @@ export function LayoutWrapper({
       onShowSettings={() =>
         queueId ? navigate(`/queues/${queueId}/settings`) : undefined
       }
+      onInviteAccepted={onInviteAccepted}
     >
       <Outlet />
     </Layout>

@@ -88,6 +88,24 @@ export default function Queues() {
         </p>
 
         <h2 className="text-xl font-semibold text-ink pt-4">
+          Invitations
+        </h2>
+
+        <p>
+          Queue owners add members by sending invitations. Type an exact
+          username and choose a role, then click <strong className="text-ink">Invite</strong>.
+          The invitee receives a push notification and can accept or decline from
+          the notifications bell in the header (web) or the Notifications tab
+          (mobile).
+        </p>
+
+        <p>
+          Accepting an invitation adds the user to the queue with the invited
+          role. Declining removes the invitation. There is no way to directly
+          add a member without their consent.
+        </p>
+
+        <h2 className="text-xl font-semibold text-ink pt-4">
           Discord Import
         </h2>
 

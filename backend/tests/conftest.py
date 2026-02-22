@@ -223,6 +223,7 @@ def _mock_notifications():
         patch("app.routers.tickets.notify_status_changed"),
         patch("app.routers.tickets.trigger_page_for_ticket"),
         patch("app.routers.comments.notify_comment_added"),
+        patch("app.routers.invites.notify_queue_invite"),
     ):
         yield
 

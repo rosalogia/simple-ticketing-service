@@ -244,6 +244,24 @@ class PageTracking(Base):
     ticket: Mapped[Ticket] = relationship()
 
 
+class QueueInvite(Base):
+    __tablename__ = "queue_invites"
+    __table_args__ = (
+        UniqueConstraint("queue_id", "user_id", name="uq_queue_invite_user"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    queue_id: Mapped[int] = mapped_column(ForeignKey("queues.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    role: Mapped[QueueRole] = mapped_column(default=QueueRole.MEMBER)
+    invited_by: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+
+    queue: Mapped[Queue] = relationship()
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    inviter: Mapped[User] = relationship(foreign_keys=[invited_by])
+
+
 class EscalationTracking(Base):
     __tablename__ = "escalation_tracking"
 

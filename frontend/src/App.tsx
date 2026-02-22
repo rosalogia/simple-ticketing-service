@@ -123,6 +123,7 @@ function AppContent() {
             onUserChange={handleUserChange}
             onLogout={handleLogout}
             queues={queues}
+            onInviteAccepted={loadQueues}
           />
         }
       >
