@@ -2,31 +2,83 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import StaticPool, create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, get_db
 from app.auth import get_current_user_id, get_optional_user_id
 from app.models import Queue, QueueMember, QueueRole, User
 
+BACKEND_DIR = Path(__file__).resolve().parent.parent
 
-# ── In-memory SQLite engine ──────────────────────────────────────────
+
+# ── PostgreSQL test engine (runs real Alembic migrations) ────────────
+
+
+def _recreate_test_database(url: str):
+    """Drop and recreate the test database for a clean slate."""
+    from sqlalchemy.engine.url import make_url
+
+    parsed = make_url(url)
+    test_db = parsed.database
+
+    # Connect to the default 'postgres' database to issue DROP/CREATE
+    admin_url = parsed.set(database="postgres")
+    admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
+    with admin_engine.connect() as conn:
+        # Terminate existing connections to the test DB
+        conn.execute(text(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE datname = :db AND pid <> pg_backend_pid()"
+        ), {"db": test_db})
+        conn.execute(text(f'DROP DATABASE IF EXISTS "{test_db}"'))
+        conn.execute(text(f'CREATE DATABASE "{test_db}"'))
+    admin_engine.dispose()
 
 
 @pytest.fixture(scope="session")
 def test_engine():
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+    test_db_url = os.environ.get(
+        "DATABASE_URL", "postgresql://localhost:5435/sts_test"
     )
-    Base.metadata.create_all(bind=engine)
-    return engine
+
+    _recreate_test_database(test_db_url)
+
+    # Run Alembic migrations (same path as production startup)
+    result = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=str(BACKEND_DIR),
+        env={**os.environ, "DATABASE_URL": test_db_url},
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        pytest.fail(
+            f"Alembic migrations failed!\n"
+            f"stdout: {result.stdout}\n"
+            f"stderr: {result.stderr}"
+        )
+
+    engine = create_engine(test_db_url)
+
+    # Ensure all connections use UTC so naive datetimes are consistent
+    @event.listens_for(engine, "connect")
+    def set_timezone(dbapi_conn, connection_record):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("SET timezone = 'UTC'")
+        cursor.close()
+
+    yield engine
+    engine.dispose()
 
 
 @pytest.fixture()
