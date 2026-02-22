@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, time
+from datetime import datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -168,10 +169,10 @@ def notify_queue_invite(db: Session, invite) -> None:
     )
 
 
-def _is_within_pageable_hours(
+def _get_user_schedule(
     db: Session, user_id: int, queue_id: int
-) -> bool:
-    """Check if current time is within the user's pageable hours for this queue."""
+) -> tuple[dict, ZoneInfo]:
+    """Return (schedule, timezone) for a user's queue settings."""
     settings = (
         db.query(UserQueueSettings)
         .filter(
@@ -185,17 +186,26 @@ def _is_within_pageable_hours(
     tz_name = settings.timezone if settings else "America/New_York"
 
     try:
-        from zoneinfo import ZoneInfo
         tz = ZoneInfo(tz_name)
     except Exception:
-        from zoneinfo import ZoneInfo
         tz = ZoneInfo("America/New_York")
+
+    return schedule, tz
+
+
+DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+
+def _is_within_pageable_hours(
+    db: Session, user_id: int, queue_id: int
+) -> bool:
+    """Check if current time is within the user's pageable hours for this queue."""
+    schedule, tz = _get_user_schedule(db, user_id, queue_id)
 
     now = datetime.now(tz)
     current_time = now.time()
 
-    day_keys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-    day_key = day_keys[now.weekday()]
+    day_key = DAY_KEYS[now.weekday()]
 
     day_config = schedule.get(day_key) if schedule else None
     if not day_config:
@@ -214,6 +224,115 @@ def _is_within_pageable_hours(
         return current_time >= start or current_time <= end
 
 
+def _next_pageable_hours_start(
+    db: Session, user_id: int, queue_id: int
+) -> datetime | None:
+    """Return UTC datetime of the next pageable window start.
+
+    Returns None if the user is currently within pageable hours.
+    Iterates forward up to 7 days through the schedule.
+    """
+    schedule, tz = _get_user_schedule(db, user_id, queue_id)
+    now = datetime.now(tz)
+
+    # Check if currently within hours
+    current_time = now.time()
+    day_key = DAY_KEYS[now.weekday()]
+    day_config = schedule.get(day_key) if schedule else None
+    if day_config:
+        start_str = day_config["start"]
+        end_str = day_config["end"]
+        start = time(int(start_str[:2]), int(start_str[3:]))
+        end = time(int(end_str[:2]), int(end_str[3:]))
+        if start <= end:
+            if start <= current_time <= end:
+                return None
+        else:
+            if current_time >= start or current_time <= end:
+                return None
+
+    # Check rest of today first — if before start time today
+    if day_config:
+        start = time(int(day_config["start"][:2]), int(day_config["start"][3:]))
+        if current_time < start:
+            candidate = now.replace(
+                hour=start.hour, minute=start.minute, second=0, microsecond=0
+            )
+            return candidate.astimezone(timezone.utc)
+
+    # Iterate forward up to 7 days
+    for offset in range(1, 8):
+        future = now + timedelta(days=offset)
+        day_key = DAY_KEYS[future.weekday()]
+        day_config = schedule.get(day_key) if schedule else None
+        if not day_config:
+            continue
+        start_str = day_config["start"]
+        start = time(int(start_str[:2]), int(start_str[3:]))
+        candidate = future.replace(
+            hour=start.hour, minute=start.minute, second=0, microsecond=0
+        )
+        return candidate.astimezone(timezone.utc)
+
+    return None
+
+
+def _advance_past_off_hours(
+    db: Session, user_id: int, queue_id: int, candidate_utc: datetime
+) -> datetime:
+    """If candidate_utc falls outside pageable hours, advance to the next window start."""
+    schedule, tz = _get_user_schedule(db, user_id, queue_id)
+
+    if candidate_utc.tzinfo is None:
+        candidate_utc = candidate_utc.replace(tzinfo=timezone.utc)
+
+    candidate_local = candidate_utc.astimezone(tz)
+    current_time = candidate_local.time()
+    day_key = DAY_KEYS[candidate_local.weekday()]
+    day_config = schedule.get(day_key) if schedule else None
+
+    # Check if candidate is within hours
+    within = False
+    if day_config:
+        start_str = day_config["start"]
+        end_str = day_config["end"]
+        start = time(int(start_str[:2]), int(start_str[3:]))
+        end = time(int(end_str[:2]), int(end_str[3:]))
+        if start <= end:
+            within = start <= current_time <= end
+        else:
+            within = current_time >= start or current_time <= end
+
+    if within:
+        return candidate_utc
+
+    # Check rest of the candidate day — if before start time
+    if day_config:
+        start = time(int(day_config["start"][:2]), int(day_config["start"][3:]))
+        if current_time < start:
+            result = candidate_local.replace(
+                hour=start.hour, minute=start.minute, second=0, microsecond=0
+            )
+            return result.astimezone(timezone.utc)
+
+    # Iterate forward up to 7 days from the candidate
+    for offset in range(1, 8):
+        future = candidate_local + timedelta(days=offset)
+        fday_key = DAY_KEYS[future.weekday()]
+        fday_config = schedule.get(fday_key) if schedule else None
+        if not fday_config:
+            continue
+        start_str = fday_config["start"]
+        start = time(int(start_str[:2]), int(start_str[3:]))
+        result = future.replace(
+            hour=start.hour, minute=start.minute, second=0, microsecond=0
+        )
+        return result.astimezone(timezone.utc)
+
+    # Fallback: return unchanged
+    return candidate_utc
+
+
 def _should_page_sev1_off_hours(db: Session, user_id: int, queue_id: int) -> bool:
     """Check if user has opted out of SEV1 pages outside pageable hours."""
     settings = (
@@ -229,29 +348,40 @@ def _should_page_sev1_off_hours(db: Session, user_id: int, queue_id: int) -> boo
     return not settings.sev1_off_hours_opt_out
 
 
-def trigger_page_for_ticket(db: Session, ticket: Ticket) -> None:
-    """Send a disruptive page to the ticket's assignee."""
-    logger.warning("trigger_page_for_ticket: ticket=%s priority=%s status=%s", ticket.id, ticket.priority, ticket.status)
+def trigger_page_for_ticket(
+    db: Session, ticket: Ticket, force: bool = False, notify_only: bool = False
+) -> None:
+    """Send a disruptive page to the ticket's assignee.
+
+    force=True: skip pageable hours check, send disruptive page.
+    notify_only=True: skip pageable hours check, send standard push instead of alarm-style page.
+    """
+    logger.warning("trigger_page_for_ticket: ticket=%s priority=%s status=%s force=%s notify_only=%s", ticket.id, ticket.priority, ticket.status, force, notify_only)
     if ticket.priority not in (TicketPriority.SEV1, TicketPriority.SEV2):
         logger.warning("Page skipped: priority %s not pageable", ticket.priority)
         return
 
     user_id = ticket.assignee_id
     queue_id = ticket.queue_id
-    within_hours = _is_within_pageable_hours(db, user_id, queue_id)
-    logger.warning("Page check: user=%s queue=%s within_hours=%s", user_id, queue_id, within_hours)
 
-    if ticket.priority == TicketPriority.SEV2 and not within_hours:
-        logger.warning("SEV2 page skipped: outside pageable hours")
-        return
+    if not force and not notify_only:
+        within_hours = _is_within_pageable_hours(db, user_id, queue_id)
+        logger.warning("Page check: user=%s queue=%s within_hours=%s", user_id, queue_id, within_hours)
 
-    if ticket.priority == TicketPriority.SEV1 and not within_hours:
-        if not _should_page_sev1_off_hours(db, user_id, queue_id):
-            logger.warning("SEV1 page skipped: user opted out off-hours")
+        if ticket.priority == TicketPriority.SEV2 and not within_hours:
+            logger.warning("SEV2 page skipped: outside pageable hours")
             return
+
+        if ticket.priority == TicketPriority.SEV1 and not within_hours:
+            if not _should_page_sev1_off_hours(db, user_id, queue_id):
+                logger.warning("SEV1 page skipped: user opted out off-hours")
+                return
 
     tokens = _get_user_device_tokens(db, user_id)
     logger.warning("Page: found %d device tokens for user %s", len(tokens), user_id)
+
+    title = f"[{ticket.priority.value}] Page: {ticket.title}"
+    body = f"You are being paged for {ticket.priority.value} ticket: {ticket.title}"
     data = {
         "type": "page",
         "ticket_id": str(ticket.id),
@@ -259,13 +389,18 @@ def trigger_page_for_ticket(db: Session, ticket: Ticket) -> None:
         "priority": ticket.priority.value,
         "status": ticket.status.value,
     }
-    for token in tokens:
-        result = send_page(token, data)
-        logger.warning("send_page result: %s", result)
+
+    if notify_only:
+        # Standard OS push notification instead of alarm-style page
+        for token in tokens:
+            result = send_notification(token, title, body, data)
+            logger.warning("send_notification result: %s", result)
+    else:
+        for token in tokens:
+            result = send_page(token, data)
+            logger.warning("send_page result: %s", result)
 
     # Create in-app page notification
-    title = f"[{ticket.priority.value}] Page: {ticket.title}"
-    body = f"You are being paged for {ticket.priority.value} ticket: {ticket.title}"
     _create_notification(db, user_id, "page", title, body, ticket.id)
 
     logger.warning("Page sent for ticket %s (%s) to user %s", ticket.id, ticket.priority.value, user_id)

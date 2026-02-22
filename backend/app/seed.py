@@ -2,11 +2,12 @@
 
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 
 from .database import Base, SessionLocal, engine
 from .models import (
     Comment,
+    PageTracking,
     Queue,
     QueueMember,
     QueueRole,
@@ -161,6 +162,13 @@ def insert_sample_data():
         ),
     ]
     db.add_all(tickets)
+    db.flush()
+
+    # ── Page Tracking (for SEV1/SEV2 tickets, like the API would create) ──
+    now = datetime.now(timezone.utc)
+    for t in tickets:
+        if t.priority in (TicketPriority.SEV1, TicketPriority.SEV2):
+            db.add(PageTracking(ticket_id=t.id, last_page_sent_at=now))
     db.flush()
 
     # ── Comments ───────────────────────────────────────────────────────

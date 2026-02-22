@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session, selectinload
 
@@ -25,6 +26,11 @@ from ..models import (
     User,
 )
 from ..notifications import (
+    _advance_past_off_hours,
+    _get_user_name,
+    _get_user_schedule,
+    _is_within_pageable_hours,
+    _next_pageable_hours_start,
     notify_status_changed,
     notify_ticket_assigned,
     notify_ticket_reassigned,
@@ -32,6 +38,7 @@ from ..notifications import (
 )
 from ..scheduler import ESCALATION_LADDER, PAGING_INTERVALS
 from ..schemas import (
+    PageRequest,
     TicketCreate,
     TicketListResponse,
     TicketResponse,
@@ -165,7 +172,13 @@ def _compute_next_page_at(
         last_sent = tracking.last_page_sent_at
         if last_sent.tzinfo is None:
             last_sent = last_sent.replace(tzinfo=timezone.utc)
-        return last_sent + timedelta(minutes=interval_minutes), acknowledged
+        candidate = last_sent + timedelta(minutes=interval_minutes)
+        # For SEV2, advance past off-hours so the countdown is realistic
+        if ticket.priority == TicketPriority.SEV2:
+            candidate = _advance_past_off_hours(
+                db, ticket.assignee_id, ticket.queue_id, candidate
+            )
+        return candidate, acknowledged
 
     return None, acknowledged
 
@@ -633,6 +646,7 @@ def escalate_ticket(
 @router.post("/{ticket_id}/page")
 def page_ticket(
     ticket_id: int,
+    payload: PageRequest = Body(default=PageRequest()),
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -648,9 +662,30 @@ def page_ticket(
     if ticket.status not in (TicketStatus.OPEN, TicketStatus.IN_PROGRESS):
         raise HTTPException(400, "Paging is only available for OPEN or IN_PROGRESS tickets")
 
+    # For SEV2, check if assignee is outside pageable hours
+    if (
+        ticket.priority == TicketPriority.SEV2
+        and not payload.force
+        and not payload.notify_only
+        and not _is_within_pageable_hours(db, ticket.assignee_id, ticket.queue_id)
+    ):
+        resume_at = _next_pageable_hours_start(db, ticket.assignee_id, ticket.queue_id)
+        _, tz = _get_user_schedule(db, ticket.assignee_id, ticket.queue_id)
+        assignee_name = _get_user_name(db, ticket.assignee_id)
+        resume_iso = resume_at.astimezone(tz).isoformat() if resume_at else None
+        return JSONResponse(
+            status_code=409,
+            content={
+                "status": "off_hours",
+                "pageable_hours_resume_at": resume_iso,
+                "assignee_name": assignee_name,
+                "assignee_timezone": str(tz),
+            },
+        )
+
     now = datetime.now(timezone.utc)
 
-    trigger_page_for_ticket(db, ticket)
+    trigger_page_for_ticket(db, ticket, force=payload.force, notify_only=payload.notify_only)
 
     pt = db.query(PageTracking).filter(PageTracking.ticket_id == ticket.id).first()
     if pt:

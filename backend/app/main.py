@@ -15,7 +15,7 @@ from slowapi.errors import RateLimitExceeded
 from .config import ALLOWED_ORIGINS, COMMIT_SHA, DEBUG, DISCORD_BOT_TOKEN, FCM_ENABLED
 from .database import SessionLocal, engine
 from .fcm import init_fcm
-from .models import User
+from .models import Queue, User
 from .ratelimit import limiter
 from .routers import api_keys, auth, categories, comments, devices, invites, notifications, queues, settings, tickets, users
 from .scheduler import start_scheduler, stop_scheduler
@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
     if DEBUG:
         db = SessionLocal()
         try:
-            if db.query(User).count() == 0:
+            if db.query(Queue).count() == 0:
                 logger.info("Debug mode: seeding default data...")
                 db.close()
                 from .seed import insert_sample_data
