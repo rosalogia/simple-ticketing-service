@@ -24,7 +24,7 @@ def upgrade() -> None:
         batch_op.create_foreign_key(None, 'users', ['bot_user_id'], ['id'])
 
     with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('is_bot', sa.Boolean(), server_default=sa.text('0'), nullable=False))
+        batch_op.add_column(sa.Column('is_bot', sa.Boolean(), server_default=sa.text('false'), nullable=False))
 
     # Data migration: create bot users for existing API keys
     conn = op.get_bind()
@@ -35,9 +35,9 @@ def upgrade() -> None:
         conn.execute(
             sa.text(
                 "INSERT INTO users (username, display_name, is_bot) "
-                "VALUES (:username, :display_name, 1)"
+                "VALUES (:username, :display_name, :is_bot)"
             ),
-            {"username": f"bot-{ak_id}", "display_name": ak_name},
+            {"username": f"bot-{ak_id}", "display_name": ak_name, "is_bot": True},
         )
         bot_user_id = conn.execute(
             sa.text("SELECT id FROM users WHERE username = :username"),
