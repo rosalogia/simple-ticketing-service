@@ -72,14 +72,24 @@ def notify_ticket_reassigned(
         )
 
 
+def _resolve_assigner_id(db: Session, ticket: Ticket) -> int:
+    """Return the real user to notify: on_behalf_of if assigner is a bot, else assigner."""
+    from .models import User
+    assigner = db.query(User).filter(User.id == ticket.assigner_id).first()
+    if assigner and assigner.is_bot and ticket.on_behalf_of_id:
+        return ticket.on_behalf_of_id
+    return ticket.assigner_id
+
+
 def notify_status_changed(db: Session, ticket: Ticket, changed_by_id: int) -> None:
     """Notify assigner when assignee changes ticket status."""
-    if changed_by_id == ticket.assigner_id:
+    notify_id = _resolve_assigner_id(db, ticket)
+    if changed_by_id == notify_id:
         return
     changer_name = _get_user_name(db, changed_by_id)
     data = {"type": "status_changed", "ticket_id": str(ticket.id)}
     _send_to_user(
-        db, ticket.assigner_id,
+        db, notify_id,
         f"{ticket.title}",
         f"{changer_name} changed status to {ticket.status.value}",
         data,
@@ -95,7 +105,8 @@ def notify_comment_added(
     commenter_name = commenter.display_name if commenter else "Someone"
     preview = comment_body[:100] + ("..." if len(comment_body) > 100 else "")
     data = {"type": "comment_added", "ticket_id": str(ticket.id)}
-    recipients = {ticket.assigner_id, ticket.assignee_id} - {commenter_id}
+    assigner_id = _resolve_assigner_id(db, ticket)
+    recipients = {assigner_id, ticket.assignee_id} - {commenter_id}
     for user_id in recipients:
         _send_to_user(
             db, user_id,

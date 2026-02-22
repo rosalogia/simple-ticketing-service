@@ -67,6 +67,24 @@ export default function ApiKeys() {
           performing the action directly.
         </p>
 
+        <h2 className="text-xl font-semibold text-ink pt-4">Bot Users</h2>
+
+        <p>
+          Each API key automatically gets a <strong className="text-ink">bot user</strong> created
+          alongside it. The bot user's display name matches the name you give the API key.
+          When using the{" "}
+          <code className="font-mono text-sm bg-stone-100 px-1.5 py-0.5 rounded text-ink">
+            on_behalf_of
+          </code>{" "}
+          feature, the bot user appears as the assigner — so tickets show
+          "Assigned by [Your Key Name]" rather than your personal account.
+          See the{" "}
+          <a href="/docs/on-behalf-of" className="text-accent hover:underline">
+            On Behalf Of
+          </a>{" "}
+          docs for details.
+        </p>
+
         <h2 className="text-xl font-semibold text-ink pt-4">Management</h2>
 
         <div className="overflow-x-auto">

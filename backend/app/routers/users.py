@@ -14,7 +14,7 @@ def list_users(
     db: Session = Depends(get_db),
     _current_user_id: int | None = Depends(get_optional_user_id),
 ):
-    return db.query(User).order_by(User.display_name).all()
+    return db.query(User).filter(User.is_bot == False).order_by(User.display_name).all()
 
 
 @router.post("/", response_model=UserResponse, status_code=201)

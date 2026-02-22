@@ -65,11 +65,16 @@ def create_comment(
     user_id = current_user_id
     on_behalf_of_id = None
     if payload.on_behalf_of is not None and getattr(request.state, "api_key_auth", False):
-        bot_user = db.query(User).filter(User.id == payload.on_behalf_of).first()
-        if not bot_user:
+        obo_user = db.query(User).filter(User.id == payload.on_behalf_of).first()
+        if not obo_user:
             raise HTTPException(400, "on_behalf_of user not found")
-        user_id = payload.on_behalf_of
-        on_behalf_of_id = current_user_id
+        bot_user_id = getattr(request.state, "api_key_bot_user_id", None)
+        if bot_user_id:
+            user_id = bot_user_id
+            on_behalf_of_id = payload.on_behalf_of
+        else:
+            user_id = current_user_id
+            on_behalf_of_id = payload.on_behalf_of
 
     comment = Comment(
         ticket_id=ticket_id, user_id=user_id, content=payload.content, on_behalf_of_id=on_behalf_of_id

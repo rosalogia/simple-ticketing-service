@@ -141,8 +141,9 @@ def me(request: Request, db: DBSession = Depends(get_db)):
         return AuthStatusResponse(authenticated=False, dev_mode=True, discord_client_id=client_id)
 
     # API key auth (X-Api-Key header)
-    api_key_user_id = _validate_api_key(request, db)
-    if api_key_user_id is not None:
+    result = _validate_api_key(request, db)
+    if result is not None:
+        api_key_user_id, _ = result
         user = db.query(User).filter(User.id == api_key_user_id).first()
         if user:
             return AuthStatusResponse(

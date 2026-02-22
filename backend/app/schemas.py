@@ -47,6 +47,7 @@ class UserResponse(BaseModel):
     username: str
     display_name: str
     avatar_url: str | None = None
+    is_bot: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

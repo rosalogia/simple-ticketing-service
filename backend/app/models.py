@@ -51,8 +51,10 @@ class ApiKey(Base):
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     last_used_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     revoked_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    bot_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
 
-    user: Mapped[User] = relationship()
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    bot_user: Mapped[Optional[User]] = relationship(foreign_keys=[bot_user_id])
 
 
 class User(Base):
@@ -65,6 +67,7 @@ class User(Base):
         String(50), unique=True, nullable=True, index=True
     )
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    is_bot: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(default=func.now())
 
     assigned_tickets: Mapped[list[Ticket]] = relationship(
