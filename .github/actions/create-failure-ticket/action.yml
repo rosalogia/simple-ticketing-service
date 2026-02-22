@@ -1,0 +1,67 @@
+name: Create Failure Ticket
+description: Create an STS ticket for CI/CD failures
+
+inputs:
+  title:
+    description: Ticket title
+    required: true
+  description:
+    description: Ticket body (markdown)
+    required: true
+  priority:
+    description: Ticket severity
+    default: SEV3
+  api_key:
+    description: STS API key
+    required: true
+  base_url:
+    description: STS base URL
+    required: true
+  queue_id:
+    description: Target queue ID
+    required: true
+  assignee_id:
+    description: Ticket assignee ID
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Create ticket
+      shell: bash
+      env:
+        TITLE: ${{ inputs.title }}
+        DESCRIPTION: ${{ inputs.description }}
+        PRIORITY: ${{ inputs.priority }}
+        STS_API_KEY: ${{ inputs.api_key }}
+        STS_BASE_URL: ${{ inputs.base_url }}
+        QUEUE_ID: ${{ inputs.queue_id }}
+        ASSIGNEE_ID: ${{ inputs.assignee_id }}
+      run: |
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$STS_BASE_URL/api/tickets" \
+          -H "Content-Type: application/json" \
+          -H "X-Api-Key: $STS_API_KEY" \
+          -d "$(jq -n \
+            --arg title "$TITLE" \
+            --arg description "$DESCRIPTION" \
+            --argjson queue_id "$QUEUE_ID" \
+            --argjson assignee_id "$ASSIGNEE_ID" \
+            --arg priority "$PRIORITY" \
+            '{
+              title: $title,
+              description: $description,
+              queue_id: $queue_id,
+              assignee_id: $assignee_id,
+              priority: $priority
+            }'
+          )")
+
+        HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+        RESP_BODY=$(echo "$RESPONSE" | sed '$d')
+
+        if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
+          echo "Ticket created successfully"
+          echo "$RESP_BODY" | jq .
+        else
+          echo "::warning::Failed to create ticket (HTTP $HTTP_CODE): $RESP_BODY"
+        fi

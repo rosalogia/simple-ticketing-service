@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "mobile/**"
+  workflow_dispatch:
 
 jobs:
   build-and-distribute:
@@ -72,3 +73,23 @@ jobs:
             --groups "beta-testers" \
             2>&1 || echo "::warning::Firebase distribution failed — APK artifact is still available"
           rm -f /tmp/firebase-sa.json
+
+      - name: Create failure ticket
+        if: failure()
+        uses: ./.github/actions/create-failure-ticket
+        with:
+          title: "Android CD failed on main"
+          description: |
+            **Android CD failure on main**
+
+            **Commit:** `${{ github.sha }}`
+            **Author:** ${{ github.actor }}
+            **Message:** ${{ github.event.head_commit.message }}
+            **Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            The Android build or Firebase distribution step failed. Check the workflow logs for details.
+          priority: SEV3
+          api_key: ${{ secrets.STS_API_KEY }}
+          base_url: ${{ vars.STS_BASE_URL }}
+          queue_id: ${{ vars.STS_DEPLOY_QUEUE_ID }}
+          assignee_id: ${{ vars.STS_DEPLOY_ASSIGNEE_ID }}

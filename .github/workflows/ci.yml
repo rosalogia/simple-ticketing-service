@@ -155,3 +155,61 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  alert-on-failure:
+    if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [backend, frontend, e2e, mobile]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build failure description
+        id: failure_info
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          MOBILE_RESULT: ${{ needs.mobile.result }}
+        run: |
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+
+          FAILED_JOBS=""
+          for JOB in backend frontend e2e mobile; do
+            RESULT_VAR="${JOB^^}_RESULT"
+            RESULT="${!RESULT_VAR}"
+            if [ "$RESULT" = "failure" ]; then
+              FAILED_JOBS="${FAILED_JOBS}\n- ${JOB}"
+            fi
+          done
+
+          TITLE="CI failed on main: ${SHORT_SHA}"
+
+          BODY=$(jq -rn \
+            --arg sha "$COMMIT_SHA" \
+            --arg actor "$ACTOR" \
+            --arg msg "$COMMIT_MSG" \
+            --arg run "$RUN_URL" \
+            --arg failed "$FAILED_JOBS" \
+            '"**CI failure on main**\n\n**Commit:** `" + $sha + "`\n**Author:** " + $actor + "\n**Message:** " + $msg + "\n**Run:** " + $run + "\n\n**Failed jobs:**" + $failed')
+
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+          {
+            echo "body<<TICKET_BODY_EOF"
+            echo "$BODY"
+            echo "TICKET_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create failure ticket
+        uses: ./.github/actions/create-failure-ticket
+        with:
+          title: ${{ steps.failure_info.outputs.title }}
+          description: ${{ steps.failure_info.outputs.body }}
+          priority: SEV3
+          api_key: ${{ secrets.STS_API_KEY }}
+          base_url: ${{ vars.STS_BASE_URL }}
+          queue_id: ${{ vars.STS_DEPLOY_QUEUE_ID }}
+          assignee_id: ${{ vars.STS_DEPLOY_ASSIGNEE_ID }}

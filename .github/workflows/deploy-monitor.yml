@@ -14,6 +14,8 @@ jobs:
     env:
       STS_BASE_URL: ${{ vars.STS_BASE_URL }}
     steps:
+      - uses: actions/checkout@v4
+
       - name: Wait for Railway build
         run: sleep 180
 
@@ -49,16 +51,14 @@ jobs:
           echo "matched=$MATCHED" >> "$GITHUB_OUTPUT"
           echo "last_status=$LAST_STATUS" >> "$GITHUB_OUTPUT"
 
-      - name: Create SEV2 ticket on failure
+      - name: Build failure description
         if: steps.poll.outputs.matched != 'true'
+        id: failure_info
         env:
           COMMIT_SHA: ${{ github.sha }}
           ACTOR: ${{ github.actor }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          STS_API_KEY: ${{ secrets.STS_API_KEY }}
-          QUEUE_ID: ${{ vars.STS_DEPLOY_QUEUE_ID }}
-          ASSIGNEE_ID: ${{ vars.STS_DEPLOY_ASSIGNEE_ID }}
         run: |
           SHORT_SHA="${COMMIT_SHA:0:7}"
           LAST_STATUS="${{ steps.poll.outputs.last_status }}"
@@ -73,7 +73,6 @@ jobs:
 
           TITLE="Deploy failed: $SHORT_SHA — $FAILURE_TYPE"
 
-          # Build ticket body — use jq to safely handle special characters
           BODY=$(jq -rn \
             --arg type "$FAILURE_TYPE" \
             --arg sha "$COMMIT_SHA" \
@@ -82,34 +81,28 @@ jobs:
             --arg run "$RUN_URL" \
             '"**Deploy failure detected by CI monitor**\n\n**Type:** " + $type + "\n**Commit:** `" + $sha + "`\n**Author:** " + $actor + "\n**Message:** " + $msg + "\n**Run:** " + $run + "\n\nThe deploy monitor polled `/api/health` for 5 minutes and the expected commit SHA never appeared. Investigate Railway deployment logs."')
 
-          # Attempt to create a SEV2 ticket
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$STS_BASE_URL/api/tickets" \
-            -H "Content-Type: application/json" \
-            -H "X-Api-Key: $STS_API_KEY" \
-            -d "$(jq -n \
-              --arg title "$TITLE" \
-              --arg description "$BODY" \
-              --argjson queue_id "$QUEUE_ID" \
-              --argjson assignee_id "$ASSIGNEE_ID" \
-              '{
-                title: $title,
-                description: $description,
-                queue_id: $queue_id,
-                assignee_id: $assignee_id,
-                priority: "SEV2"
-              }'
-            )")
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+          # Use a heredoc delimiter for multiline body
+          {
+            echo "body<<TICKET_BODY_EOF"
+            echo "$BODY"
+            echo "TICKET_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
 
-          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          RESP_BODY=$(echo "$RESPONSE" | sed '$d')
+      - name: Create SEV2 ticket on failure
+        if: steps.poll.outputs.matched != 'true'
+        uses: ./.github/actions/create-failure-ticket
+        with:
+          title: ${{ steps.failure_info.outputs.title }}
+          description: ${{ steps.failure_info.outputs.body }}
+          priority: SEV2
+          api_key: ${{ secrets.STS_API_KEY }}
+          base_url: ${{ vars.STS_BASE_URL }}
+          queue_id: ${{ vars.STS_DEPLOY_QUEUE_ID }}
+          assignee_id: ${{ vars.STS_DEPLOY_ASSIGNEE_ID }}
 
-          if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
-            echo "SEV2 ticket created successfully"
-            echo "$RESP_BODY" | jq .
-          else
-            echo "::warning::Failed to create SEV2 ticket (HTTP $HTTP_CODE): $RESP_BODY"
-          fi
-
-          # Fail the workflow regardless
-          echo "::error::Deployment verification failed: $FAILURE_TYPE"
+      - name: Fail workflow on deploy failure
+        if: steps.poll.outputs.matched != 'true'
+        run: |
+          echo "::error::Deployment verification failed"
           exit 1
