@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from .config import ALLOWED_ORIGINS, DEBUG, DISCORD_BOT_TOKEN, FCM_ENABLED
+from .config import ALLOWED_ORIGINS, COMMIT_SHA, DEBUG, DISCORD_BOT_TOKEN, FCM_ENABLED
 from .database import SessionLocal, engine
 from .fcm import init_fcm
 from .models import User
@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
     )
     if result.returncode != 0:
         logger.error("Alembic migration failed:\n%s", result.stderr)
+        sys.exit(1)
     else:
         logger.info("Database migrations applied")
 
@@ -119,4 +120,4 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "commit": COMMIT_SHA}
