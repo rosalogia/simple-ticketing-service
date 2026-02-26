@@ -2,6 +2,7 @@
 set -euo pipefail
 
 BACKEND_PORT="${BACKEND_PORT:-8001}"
+DETOX_CONFIG="${DETOX_CONFIG:-android.emu.debug}"
 BACKEND_DIR="$(cd "$(dirname "$0")/../../backend" && pwd)"
 MOBILE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -66,4 +67,4 @@ adb reverse tcp:8000 "tcp:$BACKEND_PORT"
 
 # Run Detox tests
 cd "$MOBILE_DIR"
-npx detox test --configuration android.emu.debug "$@"
+npx detox test --configuration "$DETOX_CONFIG" "$@"

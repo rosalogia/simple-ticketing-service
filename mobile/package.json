@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "test:e2e:build": "detox build --configuration android.emu.debug",
     "test:e2e": "scripts/reset-test-db.sh && scripts/run-e2e.sh",
-    "test:e2e:ci": "scripts/reset-test-db.sh && detox test --configuration android.ci.debug --headless --record-logs all"
+    "test:e2e:ci": "scripts/reset-test-db.sh && DETOX_CONFIG=android.ci.debug scripts/run-e2e.sh --headless --record-logs all"
   },
   "dependencies": {
     "@notifee/react-native": "^9.1.8",

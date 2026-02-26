@@ -239,20 +239,11 @@ jobs:
           force-avd-creation: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: |
-            adb reverse tcp:8000 tcp:8001
-            cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8001 &
-            BACKEND_PID=$!
-            for i in $(seq 1 30); do
-              curl -sf http://localhost:8001/api/health > /dev/null 2>&1 && break
-              [ "$i" -eq 30 ] && { echo "Backend failed to start"; exit 1; }
-              sleep 1
-            done
-            cd ../mobile && npx detox test --configuration android.ci.debug --headless --record-logs all
-            kill $BACKEND_PID 2>/dev/null || true
+          script: mobile/scripts/run-e2e.sh --headless --record-logs all
         env:
           CI: "true"
           DEBUG: "true"
+          DETOX_CONFIG: android.ci.debug
           DATABASE_URL: "postgresql://sts:test@localhost:5432/sts_e2e"
 
       - name: Upload Detox artifacts
