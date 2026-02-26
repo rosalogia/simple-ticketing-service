@@ -34,13 +34,13 @@ test.describe('Invitations', () => {
 
     // Open notifications dropdown
     await page.getByTitle('Notifications').click();
-    await expect(page.getByText('Notifications')).toBeVisible();
+    await expect(page.getByText('Notifications', { exact: true })).toBeVisible();
 
     // Bob should see the invitation from Alice
-    await expect(page.getByText(`Alice Chen invited you to ${newQueueName}`)).toBeVisible();
+    await expect(page.getByText(`Alice Chen invited you to ${newQueueName}`).first()).toBeVisible();
 
     // Accept the invitation
-    await page.getByRole('button', { name: 'Accept' }).click();
+    await page.getByRole('button', { name: 'Accept' }).first().click();
 
     // The invitation should disappear
     await expect(page.getByText(`Alice Chen invited you to ${newQueueName}`)).not.toBeVisible();

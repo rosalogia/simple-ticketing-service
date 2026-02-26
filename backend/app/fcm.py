@@ -5,6 +5,7 @@ import logging
 from enum import Enum
 
 from .config import FCM_ENABLED, FIREBASE_CREDENTIALS_JSON
+from .metrics import FCM_SEND_TOTAL
 
 logger = logging.getLogger(__name__)
 
@@ -72,12 +73,15 @@ def send_notification(
             data=data or {},
         )
         messaging.send(message)
+        FCM_SEND_TOTAL.labels(send_type="notification", result="success").inc()
         return SendResult.SUCCESS
     except Exception as exc:
         if _is_token_invalid(exc):
             logger.warning("FCM send_notification: token invalid, should be removed: %s", exc)
+            FCM_SEND_TOTAL.labels(send_type="notification", result="token_invalid").inc()
             return SendResult.TOKEN_INVALID
         logger.error("FCM send_notification failed: %s", exc)
+        FCM_SEND_TOTAL.labels(send_type="notification", result="failed").inc()
         return SendResult.FAILED
 
 
@@ -101,10 +105,13 @@ def send_page(
             ),
         )
         messaging.send(message)
+        FCM_SEND_TOTAL.labels(send_type="page", result="success").inc()
         return SendResult.SUCCESS
     except Exception as exc:
         if _is_token_invalid(exc):
             logger.warning("FCM send_page: token invalid, should be removed: %s", exc)
+            FCM_SEND_TOTAL.labels(send_type="page", result="token_invalid").inc()
             return SendResult.TOKEN_INVALID
         logger.error("FCM send_page failed: %s", exc)
+        FCM_SEND_TOTAL.labels(send_type="page", result="failed").inc()
         return SendResult.FAILED

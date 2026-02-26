@@ -57,7 +57,9 @@ def get_current_user_id(
     if is_dev_mode():
         user_id = request.headers.get("X-User-Id")
         if user_id:
-            return int(user_id)
+            resolved = int(user_id)
+            request.state.user_id = resolved
+            return resolved
         # Fall through to API key / Bearer token auth
 
     # API key auth (MCP server, CLI tools, etc.)
@@ -66,6 +68,7 @@ def get_current_user_id(
         api_key_user_id, bot_user_id = result
         request.state.api_key_auth = True
         request.state.api_key_bot_user_id = bot_user_id
+        request.state.user_id = api_key_user_id
         return api_key_user_id
 
     session_id = _get_session_id_from_request(request)
@@ -76,6 +79,7 @@ def get_current_user_id(
     if not session:
         raise HTTPException(401, "Session expired")
 
+    request.state.user_id = session.user_id
     return session.user_id
 
 
