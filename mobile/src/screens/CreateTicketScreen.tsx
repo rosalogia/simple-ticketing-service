@@ -127,10 +127,11 @@ export default function CreateTicketScreen({navigation, route}: Props) {
   };
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView testID="create-ticket-scroll" style={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.form}>
         <Text style={styles.label}>Title *</Text>
         <TextInput
+          testID="title-input"
           style={styles.input}
           value={title}
           onChangeText={setTitle}
@@ -140,6 +141,7 @@ export default function CreateTicketScreen({navigation, route}: Props) {
 
         <Text style={styles.label}>Description</Text>
         <TextInput
+          testID="description-input"
           style={[styles.input, styles.multiline]}
           value={description}
           onChangeText={setDescription}
@@ -234,6 +236,7 @@ export default function CreateTicketScreen({navigation, route}: Props) {
         )}
 
         <TouchableOpacity
+          testID="submit-ticket-button"
           style={[styles.submitButton, submitting && {opacity: 0.6}]}
           onPress={handleSubmit}
           disabled={submitting}>

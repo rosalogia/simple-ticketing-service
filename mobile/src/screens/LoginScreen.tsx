@@ -54,10 +54,12 @@ export default function LoginScreen() {
           <View style={styles.devSection}>
             <Text style={styles.devLabel}>Dev Mode - Select User</Text>
             <FlatList
+              testID="dev-user-list"
               data={users}
               keyExtractor={u => String(u.id)}
               renderItem={({item}) => (
                 <TouchableOpacity
+                  testID={`user-row-${item.username}`}
                   style={styles.userRow}
                   onPress={() => handleDevLogin(item.id)}>
                   <Text style={styles.userName}>{item.display_name}</Text>

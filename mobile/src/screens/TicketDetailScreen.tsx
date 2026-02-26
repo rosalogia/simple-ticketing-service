@@ -229,7 +229,7 @@ export default function TicketDetailScreen({route, navigation}: Props) {
           <InfoButton>
             <PriorityHelpContent />
           </InfoButton>
-          <View style={[styles.badge, {backgroundColor: sColor.bg}]}>
+          <View testID="ticket-status" style={[styles.badge, {backgroundColor: sColor.bg}]}>
             <Text style={[styles.badgeText, {color: sColor.text}]}>
               {statusLabels[ticket.status]}
             </Text>
@@ -262,7 +262,7 @@ export default function TicketDetailScreen({route, navigation}: Props) {
           </>
         ) : (
           <>
-            <Text style={styles.title}>{ticket.title}</Text>
+            <Text testID="ticket-title" style={styles.title}>{ticket.title}</Text>
             {ticket.description && (
               <Text style={styles.description}>{ticket.description}</Text>
             )}

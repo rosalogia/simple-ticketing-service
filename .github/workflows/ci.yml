@@ -156,9 +156,107 @@ jobs:
       - name: Run tests
         run: npm test
 
+  mobile-e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sts
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: sts_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install backend dependencies
+        run: uv sync --extra postgres
+        working-directory: backend
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install mobile dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Generate debug keystore
+        run: keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build Detox debug APK
+        run: npx detox build --configuration android.ci.debug
+
+      - name: Reset E2E database
+        run: scripts/reset-test-db.sh
+        env:
+          CI: "true"
+          DEBUG: "true"
+          PGUSER: sts
+          PGPASSWORD: test
+          DATABASE_URL: "postgresql://sts:test@localhost:5432/sts_e2e"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run mobile E2E tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          avd-name: detox_ci
+          force-avd-creation: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: mobile/scripts/run-e2e.sh --headless --record-logs all
+        env:
+          CI: "true"
+          DEBUG: "true"
+          DETOX_CONFIG: android.ci.debug
+          DATABASE_URL: "postgresql://sts:test@localhost:5432/sts_e2e"
+
+      - name: Upload Detox artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: detox-artifacts
+          path: mobile/artifacts/
+          retention-days: 14
+
   alert-on-failure:
     if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    needs: [backend, frontend, e2e, mobile]
+    needs: [backend, frontend, e2e, mobile, mobile-e2e]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -174,13 +272,15 @@ jobs:
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
           MOBILE_RESULT: ${{ needs.mobile.result }}
+          MOBILE_E2E_RESULT: ${{ needs.mobile-e2e.result }}
         run: |
           SHORT_SHA="${COMMIT_SHA:0:7}"
 
           FAILED_JOBS=""
-          for JOB in backend frontend e2e mobile; do
-            RESULT_VAR="${JOB^^}_RESULT"
-            RESULT="${!RESULT_VAR}"
+          for JOB in backend frontend e2e mobile mobile-e2e; do
+            VAR_NAME="${JOB^^}"
+            VAR_NAME="${VAR_NAME//-/_}_RESULT"
+            RESULT="${!VAR_NAME}"
             if [ "$RESULT" = "failure" ]; then
               FAILED_JOBS="${FAILED_JOBS}\n- ${JOB}"
             fi
