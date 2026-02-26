@@ -27,6 +27,7 @@ Stable. Clean component organization. State management is local (useState/useCal
 - `src/api/client.ts` — centralized API client; 401 handling emits `session-expired` event.
 - `src/auth/AuthContext.tsx` — auth state management; dev vs prod mode divergence.
 - nginx config template (`nginx.conf.template`) — envsubst for PORT and BACKEND_HOST.
+- E2E tests: Playwright retries do not reset the database — tests that create data may see duplicates on retry. Use `{ exact: true }` or `.first()` where needed. See [[inc-002-e2e-invitations-flaky]].
 
 ## Customer Impact
 Primary web interface. Degradation means users can't manage tickets or queues from desktop.

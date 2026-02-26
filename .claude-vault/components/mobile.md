@@ -28,6 +28,7 @@ Stable. Active development (Detox E2E tests recently added).
 - `src/screens/PageAlertScreen.tsx` — full-screen alarm UI; plays siren sound.
 - `android/` native code — SirenPlayer Java module, notification channels.
 - Detox E2E tests in `e2e/` — require running emulator.
+- CI uses `reactivecircus/android-emulator-runner@v2` — **never use multi-line `script` blocks** (splits into separate `sh -c` calls). Always call `mobile/scripts/run-e2e.sh` instead. See [[rb-android-emulator-runner-scripts]] and [[inc-001-mobile-e2e-ci-hang]].
 
 ## Customer Impact
 Mobile users get real-time page alerts for critical tickets. If mobile degrades, on-call responders may miss pages.
