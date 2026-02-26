@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timedelta, timezone
+from typing import Callable
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from .database import SessionLocal
+from .metrics import JOB_DURATION_SECONDS, JOB_ITEMS_PROCESSED, JOB_RUNS_TOTAL
 from .models import (
     EscalationTracking,
     Notification,
@@ -37,9 +40,28 @@ ESCALATION_LADDER = {
 }
 
 
-def run_paging_check() -> None:
+def _instrumented(job_name: str, fn: Callable[[], int]) -> Callable[[], None]:
+    """Wrap a job function with Prometheus instrumentation."""
+    def wrapper() -> None:
+        start = time.perf_counter()
+        try:
+            items = fn()
+            JOB_RUNS_TOTAL.labels(job_name=job_name, status="success").inc()
+            if items:
+                JOB_ITEMS_PROCESSED.labels(job_name=job_name).inc(items)
+        except Exception:
+            JOB_RUNS_TOTAL.labels(job_name=job_name, status="error").inc()
+            raise
+        finally:
+            JOB_DURATION_SECONDS.labels(job_name=job_name).observe(time.perf_counter() - start)
+    wrapper.__name__ = fn.__name__
+    return wrapper
+
+
+def run_paging_check() -> int:
     """Check all pageable tickets and send re-pages as needed. Runs every 1 min."""
     db = SessionLocal()
+    pages_sent = 0
     try:
         now = datetime.now(timezone.utc)
 
@@ -84,17 +106,20 @@ def run_paging_check() -> None:
             trigger_page_for_ticket(db, ticket)
             tracking.last_page_sent_at = now
             db.commit()
+            pages_sent += 1
 
     except Exception:
         logger.exception("Error in paging check")
         db.rollback()
     finally:
         db.close()
+    return pages_sent
 
 
-def run_escalation_check() -> None:
+def run_escalation_check() -> int:
     """Check tickets for escalation based on due dates. Runs every 30 min."""
     db = SessionLocal()
+    escalations = 0
     try:
         now = datetime.now(timezone.utc)
         today = now.date()
@@ -181,6 +206,7 @@ def run_escalation_check() -> None:
                 tracking.last_escalation_at = now
                 tracking.escalation_count += 1
                 db.commit()
+                escalations += 1
 
                 notify_escalation(db, ticket, old_priority.value, new_priority.value)
 
@@ -207,11 +233,13 @@ def run_escalation_check() -> None:
         db.rollback()
     finally:
         db.close()
+    return escalations
 
 
-def run_notification_cleanup() -> None:
+def run_notification_cleanup() -> int:
     """Delete notifications older than 7 days. Runs daily."""
     db = SessionLocal()
+    deleted = 0
     try:
         cutoff = datetime.now(timezone.utc) - timedelta(days=7)
         deleted = db.query(Notification).filter(Notification.created_at < cutoff).delete()
@@ -223,13 +251,14 @@ def run_notification_cleanup() -> None:
         db.rollback()
     finally:
         db.close()
+    return deleted
 
 
 def start_scheduler() -> None:
     """Start the background scheduler with paging and escalation jobs."""
-    scheduler.add_job(run_paging_check, "interval", minutes=1, id="paging_check", replace_existing=True)
-    scheduler.add_job(run_escalation_check, "interval", minutes=30, id="escalation_check", replace_existing=True)
-    scheduler.add_job(run_notification_cleanup, "interval", hours=24, id="notification_cleanup", replace_existing=True)
+    scheduler.add_job(_instrumented("paging_check", run_paging_check), "interval", minutes=1, id="paging_check", replace_existing=True)
+    scheduler.add_job(_instrumented("escalation_check", run_escalation_check), "interval", minutes=30, id="escalation_check", replace_existing=True)
+    scheduler.add_job(_instrumented("notification_cleanup", run_notification_cleanup), "interval", hours=24, id="notification_cleanup", replace_existing=True)
     scheduler.start()
     logger.info("Background scheduler started (paging: 1min, escalation: 30min, notification cleanup: 24h)")
 
