@@ -1,7 +1,7 @@
 ---
 type: component
 name: prometheus
-health: experimental
+health: stable
 dependencies:
   - "[[backend]]"
 dependents:
@@ -18,7 +18,7 @@ Self-hosted Prometheus instance on Railway. Scrapes the backend's `/metrics` end
 - Dockerfile: `monitoring/prometheus/Dockerfile`
 
 ## Health
-Experimental — not yet deployed. Railway service needs to be created pointing at `monitoring/prometheus/` subdirectory on GitHub. See [[002-observability-stack]].
+Deployed on Railway. Service points at `monitoring/prometheus/` subdirectory on GitHub. See [[002-observability-stack]].
 
 ## Limitations
 - Single instance, no HA. Acceptable for current scale.
@@ -28,6 +28,7 @@ Experimental — not yet deployed. Railway service needs to be created pointing 
 ## Caution Areas
 - `prometheus.yml` scrape target is hardcoded to `backend.railway.internal:8000`. If the backend service name or port changes, update this.
 - No authentication on the Prometheus HTTP API — relies entirely on Railway private networking for access control.
+- The `prom/prometheus` base image has `ENTRYPOINT ["/bin/prometheus"]`. The Dockerfile must clear it with `ENTRYPOINT []` before using a shell `CMD` for `$PORT` expansion. See [[inv-railway-docker-entrypoint]].
 
 ## Customer Impact
 None directly. Prometheus is internal infrastructure. If it goes down, Grafana dashboards stop updating but no user-facing features are affected.

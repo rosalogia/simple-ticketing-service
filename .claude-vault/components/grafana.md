@@ -1,7 +1,7 @@
 ---
 type: component
 name: grafana
-health: experimental
+health: stable
 dependencies:
   - "[[prometheus]]"
 dependents: []
@@ -18,7 +18,7 @@ Self-hosted Grafana instance on Railway. Provides the monitoring dashboard for t
 - Dockerfile: `monitoring/grafana/Dockerfile`
 
 ## Health
-Experimental — not yet deployed. Railway service needs to be created pointing at `monitoring/grafana/` subdirectory on GitHub. See [[002-observability-stack]].
+Deployed on Railway. Service points at `monitoring/grafana/` subdirectory on GitHub. Public domain: `sts-grafana.up.railway.app`. See [[002-observability-stack]].
 
 ## Limitations
 - Single instance, no persistence volume configured — dashboard edits made in the UI are lost on redeploy. Use the provisioned JSON in the repo as source of truth.
@@ -27,7 +27,7 @@ Experimental — not yet deployed. Railway service needs to be created pointing 
 ## Caution Areas
 - Provisioned datasource URL (`prometheus.railway.internal:9090`) assumes the Prometheus service is named `prometheus` in Railway and listens on port 9090. The actual port may differ since Railway assigns `$PORT` dynamically — if Prometheus uses a different port, update `provisioning/datasources/prometheus.yml`.
 - Dashboard JSON in `monitoring/grafana/dashboards/` uses hardcoded `"uid": "prometheus"` datasource references. The importable version in `monitoring/grafana-dashboard.json` uses `${datasource}` template variable instead.
-- `GF_SERVER_HTTP_PORT` must be set to `${{PORT}}` in Railway env vars so Grafana listens on Railway's assigned port.
+- The `grafana/grafana` base image has `/run.sh` as ENTRYPOINT. The Dockerfile must clear it with `ENTRYPOINT []` before using a shell `CMD` for `$PORT` expansion. Railway's `${{PORT}}` reference syntax does NOT work for the built-in `PORT` variable in env vars. See [[inv-railway-docker-entrypoint]].
 
 ## Customer Impact
 None directly. Grafana is an internal operations tool. If it goes down, monitoring visibility is lost but no user-facing features are affected.
