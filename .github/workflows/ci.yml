@@ -7,6 +7,22 @@ on:
     branches: [main]
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            mobile:
+              - 'mobile/**'
+
   backend:
     runs-on: ubuntu-latest
     defaults:
@@ -157,6 +173,8 @@ jobs:
         run: npm test
 
   mobile-e2e:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.mobile == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
