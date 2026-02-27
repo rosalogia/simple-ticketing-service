@@ -26,6 +26,12 @@ def test_metrics_returns_prometheus_output(client):
     assert "http_request_duration_seconds" in body
 
 
+def test_metrics_allowed_with_port_in_host(client):
+    # Prometheus sends Host header with port (e.g. backend.railway.internal:8000)
+    response = client.get("/metrics", headers={"host": "backend.railway.internal:8000"})
+    assert response.status_code == 200
+
+
 def test_metrics_blocked_from_public(client):
     with patch("app.main.DEBUG", False):
         response = client.get("/metrics", headers={"host": "myapp.up.railway.app"})
