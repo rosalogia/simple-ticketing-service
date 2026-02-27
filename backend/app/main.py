@@ -137,7 +137,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/metrics")
 def metrics(request: Request):
-    if not DEBUG and not request.headers.get("host", "").endswith(".railway.internal"):
+    host = request.headers.get("host", "").split(":")[0]
+    if not DEBUG and not host.endswith(".railway.internal"):
         raise HTTPException(status_code=404)
     collect_pool_metrics()
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
