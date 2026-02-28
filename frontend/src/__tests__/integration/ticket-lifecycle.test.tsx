@@ -12,14 +12,16 @@ import { mockTicket } from "../mocks/data";
 describe("Ticket Lifecycle Integration", () => {
   it("dashboard shows tickets and stats", async () => {
     render(
-      <ToastProvider>
-        <Dashboard
-          currentUserId={1}
-          queueId={1}
-          users={[{ id: 1 }, { id: 2 }]}
-          onSelectTicket={vi.fn()}
-        />
-      </ToastProvider>
+      <MemoryRouter>
+        <ToastProvider>
+          <Dashboard
+            currentUserId={1}
+            queueId={1}
+            users={[{ id: 1 }, { id: 2 }]}
+            onSelectTicket={vi.fn()}
+          />
+        </ToastProvider>
+      </MemoryRouter>
     );
 
     // Wait for tickets to load (appears in both desktop table + mobile card)
@@ -86,14 +88,16 @@ describe("Ticket Lifecycle Integration", () => {
     const onSelectTicket = vi.fn();
 
     render(
-      <ToastProvider>
-        <Dashboard
-          currentUserId={1}
-          queueId={1}
-          users={[{ id: 1 }, { id: 2 }]}
-          onSelectTicket={onSelectTicket}
-        />
-      </ToastProvider>
+      <MemoryRouter>
+        <ToastProvider>
+          <Dashboard
+            currentUserId={1}
+            queueId={1}
+            users={[{ id: 1 }, { id: 2 }]}
+            onSelectTicket={onSelectTicket}
+          />
+        </ToastProvider>
+      </MemoryRouter>
     );
 
     await waitFor(() => {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
 import Dashboard from "../../components/Dashboard";
@@ -19,9 +20,11 @@ function renderDashboard(
   };
   return {
     ...render(
-      <ToastProvider>
-        <Dashboard {...defaultProps} />
-      </ToastProvider>
+      <MemoryRouter>
+        <ToastProvider>
+          <Dashboard {...defaultProps} />
+        </ToastProvider>
+      </MemoryRouter>
     ),
     props: defaultProps,
   };
