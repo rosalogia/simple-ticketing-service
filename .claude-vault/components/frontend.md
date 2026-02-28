@@ -16,6 +16,7 @@ React SPA (Vite + TypeScript + Tailwind CSS) serving the web UI for STS. Provide
 - Dev mode: sends `X-User-Id` header, shows user switcher.
 - Production: served by nginx, which proxies `/api/*` to the backend.
 - `PerformanceDashboard` component at `/queues/:queueId/performance/:userId` — stat cards, resolution quality bars, and stacked bar chart (Recharts). Accessible from Dashboard tab bar (chart icon) and QueueSettings member list (per-member chart icon).
+- `UrgentTicketsDropdown` component in the header navbar (between notifications and performance button). Clock icon with red (overdue) or amber (due-soon) badge. Dropdown lists overdue and due-soon sections with tickets from all user queues. Calls `GET /api/tickets/urgent`.
 
 ## Health
 Stable. Clean component organization. State management is local (useState/useCallback) — no global store.

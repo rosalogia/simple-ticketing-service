@@ -46,6 +46,7 @@ from ..schemas import (
     TicketResponse,
     TicketStats,
     TicketUpdate,
+    UrgentTicketsResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -242,6 +243,80 @@ def get_ticket_stats(
             and t.status not in (TicketStatus.COMPLETED, TicketStatus.CANCELLED)
         ),
         total=len(tickets),
+    )
+
+
+# ── Urgent (cross-queue overdue & due-soon) ──────────────────────────
+
+
+@router.get("/urgent", response_model=UrgentTicketsResponse)
+def get_urgent_tickets(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """Return overdue and due-soon tickets assigned to the current user across all queues."""
+    # Get all queue IDs where the user is a member
+    queue_ids = [
+        qm.queue_id
+        for qm in db.query(QueueMember).filter(QueueMember.user_id == current_user_id).all()
+    ]
+    if not queue_ids:
+        return UrgentTicketsResponse(overdue=[], due_soon=[], overdue_count=0, due_soon_count=0)
+
+    today = date.today()
+    due_soon_end = today + timedelta(days=3)
+
+    # Comment count subquery
+    comment_count_sq = (
+        db.query(
+            Comment.ticket_id,
+            func.count(Comment.id).label("comment_count"),
+        )
+        .group_by(Comment.ticket_id)
+        .subquery()
+    )
+
+    base_q = (
+        db.query(Ticket, func.coalesce(comment_count_sq.c.comment_count, 0))
+        .outerjoin(comment_count_sq, comment_count_sq.c.ticket_id == Ticket.id)
+        .options(
+            selectinload(Ticket.assignee),
+            selectinload(Ticket.assigner),
+            selectinload(Ticket.on_behalf_of),
+            selectinload(Ticket.queue),
+        )
+        .filter(
+            Ticket.assignee_id == current_user_id,
+            Ticket.queue_id.in_(queue_ids),
+            Ticket.due_date.isnot(None),
+            Ticket.status.notin_([TicketStatus.COMPLETED, TicketStatus.CANCELLED]),
+        )
+    )
+
+    # Overdue: due_date < today
+    overdue_rows = (
+        base_q.filter(Ticket.due_date < today)
+        .order_by(Ticket.due_date.asc())
+        .limit(50)
+        .all()
+    )
+
+    # Due soon: today <= due_date <= today + 3 days
+    due_soon_rows = (
+        base_q.filter(Ticket.due_date >= today, Ticket.due_date <= due_soon_end)
+        .order_by(Ticket.due_date.asc())
+        .limit(50)
+        .all()
+    )
+
+    overdue = [_ticket_to_response(t, cc, queue_name=t.queue.name) for t, cc in overdue_rows]
+    due_soon = [_ticket_to_response(t, cc, queue_name=t.queue.name) for t, cc in due_soon_rows]
+
+    return UrgentTicketsResponse(
+        overdue=overdue,
+        due_soon=due_soon,
+        overdue_count=len(overdue),
+        due_soon_count=len(due_soon),
     )
 
 

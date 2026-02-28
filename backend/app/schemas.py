@@ -178,6 +178,7 @@ class TicketResponse(BaseModel):
     next_page_at: Optional[datetime] = None
     escalation_paused: bool = False
     page_acknowledged: bool = False
+    queue_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -185,6 +186,13 @@ class TicketResponse(BaseModel):
 class TicketListResponse(BaseModel):
     tickets: list[TicketResponse]
     total: int
+
+
+class UrgentTicketsResponse(BaseModel):
+    overdue: list[TicketResponse]
+    due_soon: list[TicketResponse]
+    overdue_count: int
+    due_soon_count: int
 
 
 # ── Comments ───────────────────────────────────────────────────────────
