@@ -20,7 +20,7 @@ FastAPI backend serving the REST API for STS. Single source of truth for all dat
 - Dev mode: accepts `X-User-Id` header for testing without OAuth.
 - FCM push notifications dispatched to mobile devices.
 - Alembic migrations auto-run at startup.
-- `/metrics` — Prometheus metrics endpoint (HTTP, scheduler, FCM, DB pool). Private-network only in production (rejects non-`.railway.internal` hosts). See [[002-observability-stack]].
+- `/metrics` — Prometheus metrics endpoint (HTTP, scheduler, FCM, DB pool). Private-network only in production (rejects non-`.railway.internal` hosts). The Host header check strips the port before comparing (e.g., `backend.railway.internal:8000` -> `backend.railway.internal`) because Railway private network requests include the port in the Host header. See [[inv-metrics-private-only]], [[002-observability-stack]].
 - `/api/health` — enriched health check with DB, scheduler, and FCM status + `uptime_seconds`.
 
 ## Health
