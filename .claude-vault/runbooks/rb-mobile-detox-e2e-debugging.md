@@ -79,7 +79,7 @@ Backend logs each request with path + status code. Missing entries mean the requ
 
 ### Keyboard, ScrollView, and autocomplete interactions
 
-9. **`scrollTo('bottom')` fails with "Scrolling a lot without reaching the edge"** when the keyboard is open or dynamic content (like suggestion dropdowns) keeps expanding the scroll area. Fix: use `waitFor(...).toBeVisible().whileElement(scrollView).scroll(200, 'down')` to incrementally scroll until the target element appears, or dismiss the keyboard first with `tapReturnKey()`.
+9. **`scrollTo('bottom')` fails with "Scrolling a lot without reaching the edge"** when the keyboard is open or dynamic content (like suggestion dropdowns) keeps expanding the scroll area. Fix: use `waitFor(...).toBeVisible().whileElement(scrollView).scroll(200, 'down')` to incrementally scroll until the target element appears, or dismiss the keyboard first. Note: even `whileElement().scroll()` can loop forever if the keyboard covers the target — always dismiss the keyboard before scrolling to a button near the bottom of the form.
 
 10. **`tapReturnKey()` triggers `onBlur` on Android** — if your suggestions dropdown is gated on a `focused` state, pressing return will blur the input, hide suggestions, and the suggestion `testID` becomes null. Don't dismiss the keyboard before tapping a suggestion if suggestions close on blur.
 
@@ -88,30 +88,36 @@ Backend logs each request with path + status code. Missing entries mean the requ
     - Type a filter string first (to narrow suggestions), then use `whileElement(...).scroll()` to scroll the suggestion into the visible area away from the input.
     - If the suggestion `onPress` never fires, the input is likely intercepting the touch — consider dismissing the keyboard first, but only if suggestions remain visible after blur.
 
-12. **`by.text()` ambiguity with accumulated data.** Test suites run in alphabetical file order and the database persists across all suites. A `by.text('Housemates')` that matched one element in isolation may match two after a prior suite creates tickets. Use `.atIndex(0)` or `by.id()` for elements that could be duplicated.
+12. **`tapReturnKey()` on multiline TextInput inserts a newline, not dismiss.** On Android, a multiline TextInput's return key adds `\n` instead of dismissing the keyboard. To dismiss after typing in a multiline field, tap a nearby single-line TextInput first, then call `tapReturnKey()` on that:
+    ```typescript
+    await element(by.id('single-line-input')).tap();
+    await element(by.id('single-line-input')).tapReturnKey();
+    ```
+
+13. **`by.text()` ambiguity with accumulated data.** Test suites run in alphabetical file order and the database persists across all suites. A `by.text('Housemates')` that matched one element in isolation may match two after a prior suite creates tickets. Use `.atIndex(0)` or `by.id()` for elements that could be duplicated.
 
 ### Running individual test files
 
-13. **Don't use `npx detox test` directly** — it skips the backend and `adb reverse` setup. Use `scripts/run-e2e.sh <test-file>` to run a single file with the full stack:
+14. **Don't use `npx detox test` directly** — it skips the backend and `adb reverse` setup. Use `scripts/run-e2e.sh <test-file>` to run a single file with the full stack:
     ```bash
     scripts/reset-test-db.sh && scripts/run-e2e.sh e2e/my-test.test.ts
     ```
 
 ### DateTimePicker (Android)
 
-14. **`display="calendar"` causes ANR in Detox** — the full calendar view blocks the main thread and triggers Application Not Responding. Use `display="default"` (spinner dialog) for Android. The default display shows OK/Cancel buttons that Detox can tap via `by.text('OK')`.
+15. **`display="calendar"` causes ANR in Detox** — the full calendar view blocks the main thread and triggers Application Not Responding. Use `display="default"` (spinner dialog) for Android. The default display shows OK/Cancel buttons that Detox can tap via `by.text('OK')`.
 
-15. **Cancel on Android DateTimePicker still fires `onChange`.** The `event.type` field distinguishes: `'set'` means OK was tapped, `'dismissed'` means Cancel. Always check `event.type === 'set'` before updating state.
+16. **Cancel on Android DateTimePicker still fires `onChange`.** The `event.type` field distinguishes: `'set'` means OK was tapped, `'dismissed'` means Cancel. Always check `event.type === 'set'` before updating state.
 
 ### Debugging failures
 
-16. **Check backend logs** in the test output — look for whether the expected API endpoint was actually called. Missing calls usually mean the request failed before reaching the backend (token not set, wrong URL, etc.).
+17. **Check backend logs** in the test output — look for whether the expected API endpoint was actually called. Missing calls usually mean the request failed before reaching the backend (token not set, wrong URL, etc.).
 
-17. **Check actual element state** in the Detox error output. The "Got:" line shows the element's position (`x`, `y`), dimensions, and visibility — invaluable for layout issues.
+18. **Check actual element state** in the Detox error output. The "Got:" line shows the element's position (`x`, `y`), dimensions, and visibility — invaluable for layout issues.
 
 ### grep and ripgrep
 
-18. **ripgrep (`rg`) can't parse `-E` flag with Unicode characters.** The Grep tool in this environment uses `rg` under the hood. When searching E2E output for `✓` or `✕`, use system grep: `LC_ALL=en_US.UTF-8 /usr/bin/grep -E '(PASS|FAIL|✕|✓)' file.txt`.
+19. **ripgrep (`rg`) can't parse `-E` flag with Unicode characters.** The Grep tool in this environment uses `rg` under the hood. When searching E2E output for `✓` or `✕`, use system grep: `LC_ALL=en_US.UTF-8 /usr/bin/grep -E '(PASS|FAIL|✕|✓)' file.txt`.
 
 ## Rollback
 N/A — tests are read-only.
