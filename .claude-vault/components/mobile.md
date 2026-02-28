@@ -30,5 +30,13 @@ Stable. Active development (Detox E2E tests recently added).
 - Detox E2E tests in `e2e/` — require running emulator.
 - CI uses `reactivecircus/android-emulator-runner@v2` — **never use multi-line `script` blocks** (splits into separate `sh -c` calls). Always call `mobile/scripts/run-e2e.sh` instead. See [[rb-android-emulator-runner-scripts]] and [[inc-001-mobile-e2e-ci-hang]].
 
+## Key Invariants
+- [[inv-mobile-ci-typecheck]] — CI must typecheck before running tests
+- [[inv-no-e2e-mocking]] — E2E tests must not mock
+
+## Key Runbooks
+- [[rb-mobile-detox-e2e-debugging]] — Writing and debugging Detox E2E tests
+- [[rb-android-emulator-runner-scripts]] — CI emulator runner gotchas
+
 ## Customer Impact
 Mobile users get real-time page alerts for critical tickets. If mobile degrades, on-call responders may miss pages.

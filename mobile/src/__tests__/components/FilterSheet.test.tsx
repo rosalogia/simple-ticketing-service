@@ -1,6 +1,7 @@
 import React from 'react';
 import {render, screen, fireEvent} from '@testing-library/react-native';
 import FilterSheet from '../../components/FilterSheet';
+import type {TicketStatus, TicketPriority} from '../../types';
 
 // Mock InfoButton to avoid nested modal complexity
 jest.mock('../../components/InfoButton', () => {
@@ -13,7 +14,7 @@ jest.mock('../../components/InfoButton', () => {
 const defaultProps = {
   visible: true,
   onClose: jest.fn(),
-  filters: {status: [] as string[], priority: [] as string[]},
+  filters: {status: [] as TicketStatus[], priority: [] as TicketPriority[]},
   onApply: jest.fn(),
 };
 

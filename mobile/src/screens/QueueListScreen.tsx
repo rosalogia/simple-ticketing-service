@@ -10,9 +10,9 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {queueApi} from '../api/client';
+import {queueApi, api} from '../api/client';
 import {useAuth} from '../auth/AuthContext';
-import type {Queue} from '../types';
+import type {Queue, UrgentTicketsResponse} from '../types';
 import type {RootStackParamList} from '../navigation/AppNavigator';
 import {colors, spacing, fontSize, fontWeight, borderRadius} from '../theme';
 
@@ -21,12 +21,17 @@ type Props = NativeStackScreenProps<RootStackParamList, 'QueueList'>;
 export default function QueueListScreen({navigation}: Props) {
   const {logout} = useAuth();
   const [queues, setQueues] = useState<Queue[]>([]);
+  const [urgent, setUrgent] = useState<UrgentTicketsResponse | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const data = await queueApi.getQueues();
       setQueues(data);
+    } catch {}
+    try {
+      const urgentData = await api.getUrgentTickets();
+      setUrgent(urgentData);
     } catch {}
   }, []);
 
@@ -75,6 +80,30 @@ export default function QueueListScreen({navigation}: Props) {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
+      {urgent && (urgent.overdue_count > 0 || urgent.due_soon_count > 0) && (
+        <TouchableOpacity
+          testID="urgent-banner"
+          style={styles.urgentBanner}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('UrgentTickets' as any)}>
+          <View style={styles.urgentBannerContent}>
+            {urgent.overdue_count > 0 && (
+              <Text style={styles.urgentOverdueText}>
+                {urgent.overdue_count} overdue
+              </Text>
+            )}
+            {urgent.overdue_count > 0 && urgent.due_soon_count > 0 && (
+              <Text style={styles.urgentDot}> {'\u00B7'} </Text>
+            )}
+            {urgent.due_soon_count > 0 && (
+              <Text style={styles.urgentDueSoonText}>
+                {urgent.due_soon_count} due soon
+              </Text>
+            )}
+          </View>
+          <Text style={styles.urgentArrow}>{'\u203A'}</Text>
+        </TouchableOpacity>
+      )}
       <FlatList
         data={queues}
         keyExtractor={q => String(q.id)}
@@ -180,6 +209,42 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.inkMuted,
     marginTop: spacing.xs,
+  },
+  urgentBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.stone200,
+    borderLeftWidth: 3,
+    borderLeftColor: '#dc2626',
+  },
+  urgentBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  urgentOverdueText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: '#dc2626',
+  },
+  urgentDot: {
+    fontSize: fontSize.sm,
+    color: colors.inkMuted,
+  },
+  urgentDueSoonText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: '#d97706',
+  },
+  urgentArrow: {
+    fontSize: fontSize.xl,
+    color: colors.inkMuted,
   },
   fab: {
     position: 'absolute',
