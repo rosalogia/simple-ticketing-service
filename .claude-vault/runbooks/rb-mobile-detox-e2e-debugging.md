@@ -49,6 +49,34 @@ Writing new Detox E2E tests for the mobile app, or debugging failures in existin
 
 8. **Promise.all in load functions:** If a screen loads multiple endpoints in `Promise.all` inside a `try/catch`, one failure silently kills all loads. Separate into independent try/catch blocks.
 
+### Reading test output
+
+The test output is extremely noisy — backend HTTP logs, scheduler messages, and Detox framework chatter dominate. When capturing output to a file (`> /tmp/e2e-output.txt 2>&1`), use these patterns to find useful information:
+
+**Test results summary** (pass/fail per test):
+```bash
+grep -E '✓|✕|Test Suites|Tests:' /tmp/e2e-output.txt
+```
+
+**Failure details** (error messages, stack traces, element state):
+```bash
+grep -E '● |Test Failed|was null|No views' /tmp/e2e-output.txt
+```
+Use `-C 10` for surrounding context on the failure messages.
+
+**Whether a specific API endpoint was called:**
+```bash
+grep '/api/tickets/urgent' /tmp/e2e-output.txt
+```
+Backend logs each request with path + status code. Missing entries mean the request never reached the backend.
+
+**Patterns that produce noise (avoid):**
+- `grep -i error` — matches scheduler log lines, Firebase warnings, deprecation notices
+- `grep HTTP` — every single API request, hundreds of lines
+- `grep detox` — framework lifecycle messages, not test results
+
+**Important:** Don't pipe `npm run test:e2e` through `grep` directly — the output is mixed stdout/stderr and `grep` may buffer indefinitely waiting for matches. Always redirect to a file first, then search the file.
+
 ### Debugging failures
 
 9. **Check backend logs** in the test output — look for whether the expected API endpoint was actually called. Missing calls usually mean the request failed before reaching the backend (token not set, wrong URL, etc.).
