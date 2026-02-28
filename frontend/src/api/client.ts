@@ -14,6 +14,7 @@ import type {
   Notification,
   DiscordServerInfo,
   UserQueueSettings,
+  UserPerformanceMetrics,
   WeekSchedule,
   ApiKey,
   ApiKeyCreateResponse,
@@ -127,6 +128,11 @@ export const queueApi = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  getUserPerformance: (queueId: number, userId: number, weeks?: number) => {
+    const params = weeks ? `?weeks=${weeks}` : "";
+    return request<UserPerformanceMetrics>(`/api/queues/${queueId}/performance/${userId}${params}`);
+  },
 };
 
 // API Keys

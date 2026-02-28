@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { User, Queue } from "../types";
 import UserSwitcher from "./UserSwitcher";
 import UserProfileMenu from "./UserProfileMenu";
@@ -36,6 +36,7 @@ export default function Layout({
   onInviteAccepted,
   children,
 }: Props) {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-paper">
       <header className="bg-stone-950 border-b border-stone-800 sticky top-0 z-40">
@@ -106,6 +107,19 @@ export default function Layout({
             </Link>
             {user && (
               <NotificationsDropdown onInviteAccepted={onInviteAccepted} />
+            )}
+            {user && currentQueue && (
+              <button
+                onClick={() => navigate(`/queues/${currentQueue.id}/performance/${currentUserId}`)}
+                className="text-stone-500 hover:text-stone-300 transition-colors p-1.5 rounded-lg hover:bg-stone-800"
+                title="My Performance"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+              </button>
             )}
             {devMode ? (
               <UserSwitcher

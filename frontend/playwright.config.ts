@@ -13,6 +13,7 @@ const databaseUrl = pgPassword
   : `postgresql://${pgUser}@localhost:${pgPort}/${dbName}`;
 
 export default defineConfig({
+  globalSetup: './e2e/global-setup.ts',
   testDir: './e2e',
   fullyParallel: false,
   workers: 1,

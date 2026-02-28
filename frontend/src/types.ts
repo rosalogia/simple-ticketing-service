@@ -151,6 +151,29 @@ export type PageResult =
   | { ok: true; ticket: Ticket }
   | { ok: false; blocked: PageBlockedInfo };
 
+export interface WeeklySeverityData {
+  week_start: string;
+  sev1: number;
+  sev2: number;
+  sev3: number;
+  sev4: number;
+}
+
+export interface UserPerformanceMetrics {
+  user: User;
+  unclosed_ticket_count: number;
+  oldest_unclosed_ticket_age_days: number | null;
+  resolved_before_escalation_count: number;
+  resolved_after_escalation_count: number;
+  resolved_before_due_count: number;
+  resolved_after_due_count: number;
+  resolved_no_due_date_count: number;
+  total_completed: number;
+  avg_time_to_close_hours: number | null;
+  avg_time_to_start_hours: number | null;
+  tickets_per_week_by_severity: WeeklySeverityData[];
+}
+
 export interface TicketFilters {
   queue_id?: number;
   status?: TicketStatus[];

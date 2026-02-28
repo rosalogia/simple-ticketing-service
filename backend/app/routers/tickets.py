@@ -21,6 +21,8 @@ from ..models import (
     QueueRole,
     SEVERITY_NUM,
     Ticket,
+    TicketEvent,
+    TicketEventType,
     TicketPriority,
     TicketStatus,
     User,
@@ -64,6 +66,25 @@ def _require_queue_membership(db: Session, queue_id: int, user_id: int) -> Queue
 
 def _require_ticket_access(db: Session, ticket: Ticket, user_id: int) -> QueueMember:
     return _require_queue_membership(db, ticket.queue_id, user_id)
+
+
+def _record_event(
+    db: Session,
+    ticket_id: int,
+    event_type: TicketEventType,
+    actor_id: int,
+    old_value: str | None = None,
+    new_value: str | None = None,
+) -> TicketEvent:
+    event = TicketEvent(
+        ticket_id=ticket_id,
+        event_type=event_type,
+        actor_id=actor_id,
+        old_value=old_value,
+        new_value=new_value,
+    )
+    db.add(event)
+    return event
 
 
 def _ticket_to_response(
@@ -382,6 +403,9 @@ def create_ticket(
     db.commit()
     db.refresh(ticket)
 
+    _record_event(db, ticket.id, TicketEventType.CREATED, current_user_id, new_value=ticket.status.value)
+    db.commit()
+
     # Create page tracking for SEV1/SEV2
     if ticket.priority in (TicketPriority.SEV1, TicketPriority.SEV2):
         now = datetime.now(timezone.utc)
@@ -486,6 +510,8 @@ def update_ticket(
         if not assignee_member:
             raise HTTPException(400, "Assignee must be a member of this queue")
 
+    old_due_date = str(ticket.due_date) if ticket.due_date else None
+
     for key, value in update_data.items():
         setattr(ticket, key, value)
 
@@ -493,6 +519,19 @@ def update_ticket(
     db.refresh(ticket)
 
     now = datetime.now(timezone.utc)
+
+    # Record ticket events
+    if "status" in update_data and ticket.status != old_status:
+        _record_event(db, ticket.id, TicketEventType.STATUS_CHANGED, current_user_id, old_value=old_status.value, new_value=ticket.status.value)
+    if "priority" in update_data and ticket.priority != old_priority:
+        _record_event(db, ticket.id, TicketEventType.PRIORITY_CHANGED, current_user_id, old_value=old_priority.value, new_value=ticket.priority.value)
+    if "assignee_id" in update_data and update_data["assignee_id"] != old_assignee_id:
+        _record_event(db, ticket.id, TicketEventType.ASSIGNEE_CHANGED, current_user_id, old_value=str(old_assignee_id), new_value=str(update_data["assignee_id"]))
+    if "due_date" in update_data:
+        new_due = str(ticket.due_date) if ticket.due_date else None
+        if new_due != old_due_date:
+            _record_event(db, ticket.id, TicketEventType.DUE_DATE_CHANGED, current_user_id, old_value=old_due_date, new_value=new_due)
+    db.commit()
 
     # Handle assignee change notifications + paging
     if "assignee_id" in update_data and update_data["assignee_id"] != old_assignee_id:
@@ -579,6 +618,7 @@ def acknowledge_ticket(
 
     pt.acknowledged_at = datetime.now(timezone.utc)
     pt.acknowledged_by = current_user_id
+    _record_event(db, ticket.id, TicketEventType.ACKNOWLEDGED, current_user_id)
     db.commit()
     return {"status": "acknowledged"}
 
@@ -613,10 +653,12 @@ def escalate_ticket(
         db.flush()
 
     # Bump priority
+    old_priority = ticket.priority
     new_priority = ESCALATION_LADDER[ticket.priority]
     ticket.priority = new_priority
     et.last_escalation_at = now
     et.escalation_count += 1
+    _record_event(db, ticket.id, TicketEventType.ESCALATED, current_user_id, old_value=old_priority.value, new_value=new_priority.value)
     db.commit()
 
     # If now SEV1/SEV2, create page tracking and trigger page
@@ -694,6 +736,7 @@ def page_ticket(
     else:
         pt = PageTracking(ticket_id=ticket.id, last_page_sent_at=now)
         db.add(pt)
+    _record_event(db, ticket.id, TicketEventType.PAGED, current_user_id)
     db.commit()
 
     ticket = (

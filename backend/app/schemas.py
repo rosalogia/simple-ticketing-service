@@ -275,3 +275,33 @@ class UserQueueSettingsResponse(BaseModel):
     sev1_off_hours_opt_out: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Performance ─────────────────────────────────────────────────────
+
+
+class WeeklySeverityData(BaseModel):
+    week_start: date
+    sev1: int = 0
+    sev2: int = 0
+    sev3: int = 0
+    sev4: int = 0
+
+
+class UserPerformanceMetrics(BaseModel):
+    user: UserResponse
+    # Snapshot stats
+    unclosed_ticket_count: int
+    oldest_unclosed_ticket_age_days: int | None
+    # Resolution quality
+    resolved_before_escalation_count: int
+    resolved_after_escalation_count: int
+    resolved_before_due_count: int
+    resolved_after_due_count: int
+    resolved_no_due_date_count: int
+    total_completed: int
+    # Time metrics (hours)
+    avg_time_to_close_hours: float | None
+    avg_time_to_start_hours: float | None
+    # Weekly breakdown
+    tickets_per_week_by_severity: list[WeeklySeverityData]

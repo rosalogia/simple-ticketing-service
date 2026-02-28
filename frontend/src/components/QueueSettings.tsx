@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import type { Queue, QueueMember, QueueRole, WeekSchedule } from "../types";
 import { queueApi } from "../api/client";
 import { useToast } from "./Toast";
@@ -52,6 +53,7 @@ export default function QueueSettings({
   onDeleted,
   onUpdated,
 }: Props) {
+  const navigate = useNavigate();
   const [queue, setQueue] = useState<Queue | null>(null);
   const [members, setMembers] = useState<QueueMember[]>([]);
   const [editing, setEditing] = useState(false);
@@ -453,6 +455,17 @@ export default function QueueSettings({
                   <option value="MEMBER">Member</option>
                   <option value="VIEWER">Viewer</option>
                 </select>
+                <button
+                  onClick={() => navigate(`/queues/${queueId}/performance/${m.user.id}`)}
+                  className="text-stone-400 hover:text-accent transition-colors p-1"
+                  title="View performance"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                  </svg>
+                </button>
                 {m.user.id !== currentUserId && (
                   <button
                     onClick={() => handleRemoveMember(m.user.id)}
