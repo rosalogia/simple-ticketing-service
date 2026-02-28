@@ -65,11 +65,19 @@ export interface Ticket {
   next_page_at: string | null;
   escalation_paused: boolean;
   page_acknowledged: boolean;
+  queue_name?: string | null;
 }
 
 export interface TicketListResponse {
   tickets: Ticket[];
   total: number;
+}
+
+export interface UrgentTicketsResponse {
+  overdue: Ticket[];
+  due_soon: Ticket[];
+  overdue_count: number;
+  due_soon_count: number;
 }
 
 export interface Comment {

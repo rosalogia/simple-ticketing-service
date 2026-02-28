@@ -20,6 +20,7 @@ import type {
   ApiKeyCreateResponse,
   PageBlockedInfo,
   PageResult,
+  UrgentTicketsResponse,
 } from "../types";
 
 // In dev mode, this is set by the user switcher.
@@ -202,6 +203,8 @@ export const api = {
 
   deleteTicket: (id: number) =>
     request<void>(`/api/tickets/${id}`, { method: "DELETE" }),
+
+  getUrgentTickets: () => request<UrgentTicketsResponse>("/api/tickets/urgent"),
 
   getTicketStats: (params: { queue_id: number; assignee_id?: number; assigner_id?: number }) => {
     const qs = new URLSearchParams();

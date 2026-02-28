@@ -174,7 +174,7 @@ function AppContent() {
         <Route
           path="/queues/:queueId/performance/:userId"
           element={
-            <PerformanceDashboardRoute currentUserId={currentUserId} />
+            <PerformanceDashboardRoute />
           }
         />
         <Route

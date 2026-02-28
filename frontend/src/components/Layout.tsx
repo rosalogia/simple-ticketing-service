@@ -4,6 +4,7 @@ import type { User, Queue } from "../types";
 import UserSwitcher from "./UserSwitcher";
 import UserProfileMenu from "./UserProfileMenu";
 import NotificationsDropdown from "./NotificationsDropdown";
+import UrgentTicketsDropdown from "./UrgentTicketsDropdown";
 
 interface Props {
   user: User | null;
@@ -108,6 +109,7 @@ export default function Layout({
             {user && (
               <NotificationsDropdown onInviteAccepted={onInviteAccepted} />
             )}
+            {user && <UrgentTicketsDropdown />}
             {user && currentQueue && (
               <button
                 onClick={() => navigate(`/queues/${currentQueue.id}/performance/${currentUserId}`)}

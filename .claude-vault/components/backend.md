@@ -24,6 +24,7 @@ FastAPI backend serving the REST API for STS. Single source of truth for all dat
 - `/api/health` — enriched health check with DB, scheduler, and FCM status + `uptime_seconds`.
 - `/api/queues/{id}/performance/{userId}` — per-user performance metrics endpoint (resolution quality, time metrics, weekly severity breakdown). Depends on `TicketEvent` audit log. See [[003-ticket-event-history]], [[inv-ticket-events-recorded]].
 - `TicketEvent` model — append-only audit log recording all significant ticket lifecycle changes (status, priority, assignee, due date, escalation, page, ack). Recorded via `_record_event()` helper in `app/routers/tickets.py`. Router: `app/routers/performance.py`.
+- `GET /api/tickets/urgent` — returns overdue and due-soon (within 3 days) tickets assigned to the current user across all their queues. Uses `UrgentTicketsResponse` schema. `TicketResponse` includes a `queue_name` field to support cross-queue display.
 
 ## Health
 Stable. Well-structured router/model/schema separation. Auth system supports multiple auth methods cleanly.

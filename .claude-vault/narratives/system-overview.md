@@ -25,3 +25,4 @@ The [[backend]] is the hub. [[frontend]] and [[mobile]] are independent clients.
 
 ## Updates
 - **Ticket Event History & Performance Dashboard**: Added a `TicketEvent` append-only audit log that records all significant ticket lifecycle changes (status, priority, assignee, due date, escalation, page, acknowledgment). This powers a per-user performance dashboard accessible within queues, showing responsiveness metrics (avg pickup time, avg close time), resolution quality (escalation and due date compliance), and weekly ticket volume by severity. See [[003-ticket-event-history]], [[inv-ticket-events-recorded]].
+- **Cross-Queue Urgent Tickets**: `GET /api/tickets/urgent` endpoint aggregates overdue and due-soon tickets across all queues a user belongs to. Surfaced in the frontend header via `UrgentTicketsDropdown` with color-coded badge (red for overdue, amber for due-soon).

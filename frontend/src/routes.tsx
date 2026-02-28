@@ -124,11 +124,7 @@ export function QueueSettingsRoute({
   );
 }
 
-export function PerformanceDashboardRoute({
-  currentUserId,
-}: {
-  currentUserId: number;
-}) {
+export function PerformanceDashboardRoute() {
   const { queueId, userId } = useParams();
   const navigate = useNavigate();
 
