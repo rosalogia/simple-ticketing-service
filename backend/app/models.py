@@ -5,7 +5,7 @@ import secrets
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Index, JSON, Boolean, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -30,6 +30,17 @@ class QueueRole(str, enum.Enum):
     OWNER = "OWNER"
     MEMBER = "MEMBER"
     VIEWER = "VIEWER"
+
+
+class TicketEventType(str, enum.Enum):
+    CREATED = "CREATED"
+    STATUS_CHANGED = "STATUS_CHANGED"
+    PRIORITY_CHANGED = "PRIORITY_CHANGED"
+    ASSIGNEE_CHANGED = "ASSIGNEE_CHANGED"
+    DUE_DATE_CHANGED = "DUE_DATE_CHANGED"
+    ESCALATED = "ESCALATED"
+    PAGED = "PAGED"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
 
 
 SEVERITY_NUM = {
@@ -289,3 +300,21 @@ class EscalationTracking(Base):
     paused: Mapped[bool] = mapped_column(Boolean, default=False)
 
     ticket: Mapped[Ticket] = relationship()
+
+
+class TicketEvent(Base):
+    __tablename__ = "ticket_events"
+    __table_args__ = (
+        Index("ix_ticket_events_ticket_type", "ticket_id", "event_type"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), index=True)
+    event_type: Mapped[TicketEventType] = mapped_column()
+    actor_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    old_value: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    new_value: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+
+    ticket: Mapped[Ticket] = relationship()
+    actor: Mapped[User] = relationship()

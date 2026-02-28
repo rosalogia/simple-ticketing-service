@@ -19,6 +19,8 @@ from app.models import (
     QueueRole,
     Session,
     Ticket,
+    TicketEvent,
+    TicketEventType,
     TicketPriority,
     TicketStatus,
     User,
@@ -147,6 +149,17 @@ class EscalationTrackingFactory(factory.Factory):
     original_priority = TicketPriority.SEV4
     escalation_count = 0
     paused = False
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        return model_class(**kwargs)
+
+
+class TicketEventFactory(factory.Factory):
+    class Meta:
+        model = TicketEvent
+
+    event_type = TicketEventType.CREATED
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):

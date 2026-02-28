@@ -14,6 +14,7 @@ import {
   DashboardRoute,
   TicketDetailRoute,
   QueueSettingsRoute,
+  PerformanceDashboardRoute,
 } from "./routes";
 
 export default function App() {
@@ -168,6 +169,12 @@ function AppContent() {
               onDeleted={handleQueueDeleted}
               onUpdated={loadQueues}
             />
+          }
+        />
+        <Route
+          path="/queues/:queueId/performance/:userId"
+          element={
+            <PerformanceDashboardRoute currentUserId={currentUserId} />
           }
         />
         <Route

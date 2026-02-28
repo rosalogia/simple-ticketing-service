@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import type { Ticket, TicketStats, TicketFilters, TicketStatus } from "../types";
 import { api } from "../api/client";
 import { useToast } from "./Toast";
@@ -31,6 +32,7 @@ export default function Dashboard({
   queueId,
   onSelectTicket,
 }: Props) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("assigned_to_me");
   const [filters, setFilters] = useState<TicketFilters>(DEFAULT_FILTERS);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -139,6 +141,18 @@ export default function Dashboard({
             <span className="hidden sm:inline"> (Assigned)</span>
           </button>
         </div>
+
+        <button
+          onClick={() => navigate(`/queues/${queueId}/performance/${currentUserId}`)}
+          className="p-2 text-stone-400 hover:text-ink transition-colors rounded-lg hover:bg-stone-100"
+          title="My Performance"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+        </button>
 
         <button
           onClick={() => setShowCreate(true)}

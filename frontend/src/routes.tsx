@@ -4,6 +4,7 @@ import Layout from "./components/Layout";
 import Dashboard from "./components/Dashboard";
 import TicketDetail from "./components/TicketDetail";
 import QueueSettings from "./components/QueueSettings";
+import PerformanceDashboard from "./components/PerformanceDashboard";
 
 // ── Layout Wrapper ──────────────────────────────────────────────────
 
@@ -119,6 +120,25 @@ export function QueueSettingsRoute({
       onBack={() => navigate(`/queues/${queueId}`)}
       onDeleted={onDeleted}
       onUpdated={onUpdated}
+    />
+  );
+}
+
+export function PerformanceDashboardRoute({
+  currentUserId,
+}: {
+  currentUserId: number;
+}) {
+  const { queueId, userId } = useParams();
+  const navigate = useNavigate();
+
+  if (!queueId || !userId) return null;
+
+  return (
+    <PerformanceDashboard
+      queueId={Number(queueId)}
+      userId={Number(userId)}
+      onBack={() => navigate(`/queues/${queueId}`)}
     />
   );
 }

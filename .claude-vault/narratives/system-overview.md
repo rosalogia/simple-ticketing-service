@@ -22,3 +22,6 @@ STS (Simple Ticketing Service) exists to provide a lightweight incident/ticket m
 
 ## Relationship to Other Areas
 The [[backend]] is the hub. [[frontend]] and [[mobile]] are independent clients. [[discord-bot]] is an in-process extension. [[postgresql]] is the single persistence layer. [[prometheus]] and [[grafana]] form the monitoring stack, communicating with the backend over Railway's private network. See [[002-observability-stack]].
+
+## Updates
+- **Ticket Event History & Performance Dashboard**: Added a `TicketEvent` append-only audit log that records all significant ticket lifecycle changes (status, priority, assignee, due date, escalation, page, acknowledgment). This powers a per-user performance dashboard accessible within queues, showing responsiveness metrics (avg pickup time, avg close time), resolution quality (escalation and due date compliance), and weekly ticket volume by severity. See [[003-ticket-event-history]], [[inv-ticket-events-recorded]].
