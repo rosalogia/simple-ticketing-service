@@ -23,6 +23,8 @@ import CreateQueueScreen from '../screens/CreateQueueScreen';
 import PageableHoursScreen from '../screens/PageableHoursScreen';
 import PageAlertScreen from '../screens/PageAlertScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import UrgentTicketsScreen from '../screens/UrgentTicketsScreen';
+import UrgentHeaderButton from '../components/UrgentHeaderButton';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -32,6 +34,7 @@ export type RootStackParamList = {
   Login: undefined;
   QueueList: undefined;
   CreateQueue: undefined;
+  UrgentTickets: undefined;
   MainTabs: {queueId: number};
   PageAlert: {
     ticketId: number;
@@ -80,7 +83,10 @@ function HomeStackNavigator({queueId}: {queueId: number}) {
         name="Dashboard"
         component={DashboardScreen}
         initialParams={{queueId}}
-        options={{title: 'Tickets'}}
+        options={{
+          title: 'Tickets',
+          headerRight: () => <UrgentHeaderButton />,
+        }}
       />
       <HomeStack.Screen
         name="TicketDetail"
@@ -160,7 +166,7 @@ function MainTabNavigator({route}: {route: {params: {queueId: number}}}) {
         name="HomeTab"
         options={{
           title: 'Tickets',
-          tabBarTestID: 'tab-bar-tickets',
+          tabBarButtonTestID: 'tab-bar-tickets',
           tabBarAccessibilityLabel: 'tab-bar-tickets',
           tabBarIcon: ({color, size}) => (
             <Icon name="ticket-outline" size={size} color={color} />
@@ -173,7 +179,7 @@ function MainTabNavigator({route}: {route: {params: {queueId: number}}}) {
         name="NotificationsTab"
         options={{
           title: 'Notifications',
-          tabBarTestID: 'tab-bar-notifications',
+          tabBarButtonTestID: 'tab-bar-notifications',
           tabBarAccessibilityLabel: 'tab-bar-notifications',
           tabBarIcon: ({color, size}) => (
             <Icon name="bell-outline" size={size} color={color} />
@@ -186,7 +192,7 @@ function MainTabNavigator({route}: {route: {params: {queueId: number}}}) {
         name="SettingsTab"
         options={{
           title: 'Settings',
-          tabBarTestID: 'tab-bar-settings',
+          tabBarButtonTestID: 'tab-bar-settings',
           tabBarAccessibilityLabel: 'tab-bar-settings',
           tabBarIcon: ({color, size}) => (
             <Icon name="cog-outline" size={size} color={color} />
@@ -304,6 +310,18 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 title: 'New Queue',
+                headerStyle: {backgroundColor: colors.paper},
+                headerTintColor: colors.ink,
+                headerTitleStyle: {fontWeight: fontWeight.semibold, fontSize: fontSize.lg},
+                headerShadowVisible: false,
+              }}
+            />
+            <RootStack.Screen
+              name="UrgentTickets"
+              component={UrgentTicketsScreen}
+              options={{
+                headerShown: true,
+                title: 'Urgent Tickets',
                 headerStyle: {backgroundColor: colors.paper},
                 headerTintColor: colors.ink,
                 headerTitleStyle: {fontWeight: fontWeight.semibold, fontSize: fontSize.lg},

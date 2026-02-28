@@ -66,6 +66,7 @@ export interface Ticket {
   created_at: string;
   updated_at: string;
   comment_count: number;
+  queue_name?: string | null;
   next_escalation_at: string | null;
   next_page_at: string | null;
   escalation_paused: boolean;
@@ -142,6 +143,13 @@ export interface PageBlockedInfo {
 export type PageResult =
   | { ok: true; ticket: Ticket }
   | { ok: false; blocked: PageBlockedInfo };
+
+export interface UrgentTicketsResponse {
+  overdue: Ticket[];
+  due_soon: Ticket[];
+  overdue_count: number;
+  due_soon_count: number;
+}
 
 export interface TicketFilters {
   queue_id?: number;

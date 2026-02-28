@@ -16,6 +16,7 @@ import type {
   UserQueueSettings,
   PageBlockedInfo,
   PageResult,
+  UrgentTicketsResponse,
 } from '../types';
 
 // Base URL — full URL required for mobile (no relative paths)
@@ -194,6 +195,8 @@ export const api = {
     const qs = parts.join('&');
     return request<TicketListResponse>(`/api/tickets/${qs ? `?${qs}` : ''}`);
   },
+
+  getUrgentTickets: () => request<UrgentTicketsResponse>('/api/tickets/urgent'),
 
   getTicket: (id: number) => request<Ticket>(`/api/tickets/${id}`),
 

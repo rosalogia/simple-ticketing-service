@@ -8,6 +8,7 @@ import type {
   AuthStatus,
   CategoriesResponse,
   UserQueueSettings,
+  UrgentTicketsResponse,
 } from '../../types';
 
 export const mockUser: User = {
@@ -81,6 +82,30 @@ export const mockTicketOverdue: Ticket = {
   title: 'Overdue task',
   due_date: '2024-01-01T00:00:00Z',
   status: 'IN_PROGRESS',
+  queue_name: 'Infra',
+};
+
+export const mockTicketDueSoon: Ticket = {
+  ...mockTicket,
+  id: 44,
+  title: 'Due soon task',
+  due_date: new Date(Date.now() + 86400000).toISOString(),
+  status: 'OPEN',
+  queue_name: 'Frontend',
+};
+
+export const mockUrgentResponse: UrgentTicketsResponse = {
+  overdue: [mockTicketOverdue],
+  due_soon: [mockTicketDueSoon],
+  overdue_count: 1,
+  due_soon_count: 1,
+};
+
+export const mockUrgentResponseEmpty: UrgentTicketsResponse = {
+  overdue: [],
+  due_soon: [],
+  overdue_count: 0,
+  due_soon_count: 0,
 };
 
 export const mockComment: Comment = {
