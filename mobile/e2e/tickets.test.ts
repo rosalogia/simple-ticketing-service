@@ -1,4 +1,4 @@
-import {by, device, element, expect} from 'detox';
+import {by, device, element, expect, waitFor} from 'detox';
 import {loginAs} from './helpers/login';
 import {goToHousematesQueue, switchToByMeTab} from './helpers/navigation';
 
@@ -18,7 +18,14 @@ describe('Tickets', () => {
 
     await element(by.id('title-input')).typeText('E2E test ticket');
     await element(by.id('description-input')).typeText('Created by Detox E2E test');
-    await element(by.id('create-ticket-scroll')).scrollTo('bottom');
+    // Dismiss keyboard: description is multiline so tapReturnKey inserts a
+    // newline. Tap the single-line title then press return to dismiss instead.
+    await element(by.id('title-input')).tap();
+    await element(by.id('title-input')).tapReturnKey();
+    await waitFor(element(by.id('submit-ticket-button')))
+      .toBeVisible()
+      .whileElement(by.id('create-ticket-scroll'))
+      .scroll(200, 'down');
     await element(by.id('submit-ticket-button')).tap();
 
     // Should navigate back to dashboard
