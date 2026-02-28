@@ -29,6 +29,8 @@ Deployed on Railway. Service points at `monitoring/prometheus/` subdirectory on 
 - `prometheus.yml` scrape target is hardcoded to `backend.railway.internal:8000`. If the backend service name or port changes, update this.
 - No authentication on the Prometheus HTTP API — relies entirely on Railway private networking for access control.
 - The `prom/prometheus` base image has `ENTRYPOINT ["/bin/prometheus"]`. The Dockerfile must clear it with `ENTRYPOINT []` before using a shell `CMD` for `$PORT` expansion. See [[inv-railway-docker-entrypoint]].
+- **PORT must be pinned as a Railway service variable** (e.g., `PORT=9090`). Do NOT try to hardcode the port in the Dockerfile while ignoring `$PORT` — Railway will REMOVE the service if it doesn't listen on `$PORT`. Instead, pin `PORT=9090` in the Railway dashboard so `$PORT` is always 9090. This gives Grafana a stable address (`prometheus.railway.internal:9090`). See [[inv-railway-port-required]].
+- When Prometheus sends `Host` header to scrape targets, it includes the port (e.g., `backend.railway.internal:8000`). The backend's `/metrics` Host check must handle this. See [[inv-metrics-private-only]].
 
 ## Customer Impact
 None directly. Prometheus is internal infrastructure. If it goes down, Grafana dashboards stop updating but no user-facing features are affected.
