@@ -1,19 +1,19 @@
 /**
  * Global setup for E2E tests: reset and re-seed the E2E database
  * so every test run starts with a clean slate.
+ *
+ * In CI, the npm test:e2e script already runs reset-test-db.sh before
+ * Playwright, so we skip this to avoid duplicate work and auth issues.
  */
 import { execSync } from 'child_process';
 
-const isCI = !!process.env.CI;
-const pgPort = isCI ? '5432' : '5435';
-const pgUser = isCI ? 'sts' : (process.env.USER ?? 'postgres');
-const pgPassword = isCI ? 'test' : '';
-const dbName = 'sts_e2e';
-
 export default async function globalSetup() {
-  const databaseUrl = pgPassword
-    ? `postgresql://${pgUser}:${pgPassword}@localhost:${pgPort}/${dbName}`
-    : `postgresql://${pgUser}@localhost:${pgPort}/${dbName}`;
+  if (process.env.CI) return;
+
+  const pgPort = '5435';
+  const pgUser = process.env.USER ?? 'postgres';
+  const dbName = 'sts_e2e';
+  const databaseUrl = `postgresql://${pgUser}@localhost:${pgPort}/${dbName}`;
 
   const env: Record<string, string> = {
     ...process.env as Record<string, string>,
@@ -25,6 +25,7 @@ export default async function globalSetup() {
     execSync(`createdb -h localhost -p ${pgPort} -U ${pgUser} ${dbName} 2>/dev/null`, {
       env,
       stdio: 'pipe',
+      timeout: 10000,
     });
   } catch {
     // Already exists — that's fine
@@ -37,6 +38,7 @@ export default async function globalSetup() {
     cwd: '../backend',
     env,
     stdio: 'inherit',
+    timeout: 60000,
   });
 
   console.log('[global-setup] Database reset complete.');

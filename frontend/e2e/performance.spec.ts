@@ -23,7 +23,7 @@ test.describe('Performance Dashboard', () => {
     await loginAs('alice');
     await ensureOnDashboard(page);
 
-    // Click the performance icon in the tab bar
+    // Click the My Performance button in the header
     await page.getByTitle('My Performance').click();
     await page.waitForURL('**/performance/**');
 
@@ -65,7 +65,7 @@ test.describe('Performance Dashboard', () => {
     await loginAs('alice');
     await ensureOnDashboard(page);
 
-    await page.getByTitle('My Performance').click();
+    await page.getByRole('button', { name: /My Performance|Performance/ }).click();
     await page.waitForURL('**/performance/**');
     await expect(page.getByText('Performance Dashboard')).toBeVisible();
 
