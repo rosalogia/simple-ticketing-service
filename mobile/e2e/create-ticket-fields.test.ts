@@ -103,8 +103,9 @@ describe('Create Ticket - Date Picker & CTI Autocomplete', () => {
         .whileElement(by.id('create-ticket-scroll'))
         .scroll(200, 'down');
       await element(by.id('category-input')).tap();
+      // Use toExist() — the keyboard may push suggestions off-screen on CI
       await waitFor(element(by.id('category-suggestions')))
-        .toBeVisible()
+        .toExist()
         .withTimeout(10000);
     });
 
