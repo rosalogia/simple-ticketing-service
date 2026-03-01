@@ -15,6 +15,7 @@ const databaseUrl = pgPassword
 export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
   testDir: './e2e',
+  testIgnore: ['**/discord/**'],
   fullyParallel: false,
   workers: 1,
   retries: isCI ? 1 : 0,

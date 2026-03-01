@@ -193,6 +193,10 @@ class Session(Base):
     discord_access_token: Mapped[Optional[str]] = mapped_column(
         String(200), nullable=True
     )
+    discord_refresh_token: Mapped[Optional[str]] = mapped_column(
+        String(200), nullable=True
+    )
+    discord_token_expires_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     expires_at: Mapped[datetime] = mapped_column()
 

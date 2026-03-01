@@ -28,3 +28,7 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# Discord E2E temp files
+e2e/discord/.discord-setup.sql
+e2e/discord/.discord-session-id
