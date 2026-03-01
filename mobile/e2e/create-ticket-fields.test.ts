@@ -96,7 +96,12 @@ describe('Create Ticket - Date Picker & CTI Autocomplete', () => {
     });
 
     it('shows suggestions when category field is focused', async () => {
-      await element(by.id('create-ticket-scroll')).scrollTo('bottom');
+      // Scroll until category-input is visible (scrollTo('bottom') may not
+      // reliably position it on slow CI emulators)
+      await waitFor(element(by.id('category-input')))
+        .toBeVisible()
+        .whileElement(by.id('create-ticket-scroll'))
+        .scroll(200, 'down');
       await element(by.id('category-input')).tap();
       await waitFor(element(by.id('category-suggestions')))
         .toBeVisible()
