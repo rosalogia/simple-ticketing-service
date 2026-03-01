@@ -1,4 +1,4 @@
-import {by, device, element, expect} from 'detox';
+import {by, device, element, expect, waitFor} from 'detox';
 import {loginAs} from './helpers/login';
 import {goToHousematesQueue, switchToByMeTab, switchToToMeTab} from './helpers/navigation';
 
@@ -25,17 +25,25 @@ describe('Queues', () => {
 
   it('To Me tab shows tickets assigned to alice', async () => {
     await goToHousematesQueue();
-    // Default tab is To Me — alice has "Pick up dry cleaning" assigned to her
-    await expect(element(by.text('Pick up dry cleaning'))).toBeVisible();
+    // Default tab is To Me — alice has "Pick up dry cleaning" assigned to her.
+    // Earlier test suites may create additional tickets, so scroll if needed.
+    await waitFor(element(by.text('Pick up dry cleaning')))
+      .toBeVisible()
+      .whileElement(by.id('ticket-list'))
+      .scroll(200, 'down');
   });
 
   it('By Me tab shows tickets created by alice', async () => {
     await goToHousematesQueue();
     await switchToByMeTab();
-    // Alice created "Read 'Designing Data-Intensive Applications' Ch. 5"
-    await expect(
+    // Alice created "Read 'Designing Data-Intensive Applications' Ch. 5".
+    // Earlier test suites may create additional tickets, so scroll if needed.
+    await waitFor(
       element(by.text("Read 'Designing Data-Intensive Applications' Ch. 5")),
-    ).toBeVisible();
+    )
+      .toBeVisible()
+      .whileElement(by.id('ticket-list'))
+      .scroll(200, 'down');
   });
 
   it('can switch between tabs', async () => {

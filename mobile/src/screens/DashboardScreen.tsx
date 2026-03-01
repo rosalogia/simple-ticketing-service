@@ -230,6 +230,7 @@ export default function DashboardScreen({navigation, route}: Props) {
   return (
     <View style={styles.container}>
       <FlatList
+        testID="ticket-list"
         data={tickets}
         keyExtractor={t => String(t.id)}
         renderItem={({item}) => (

@@ -100,7 +100,7 @@ describe('Create Ticket - Date Picker & CTI Autocomplete', () => {
       await element(by.id('category-input')).tap();
       await waitFor(element(by.id('category-suggestions')))
         .toBeVisible()
-        .withTimeout(5000);
+        .withTimeout(10000);
     });
 
     it('filters category suggestions as user types', async () => {

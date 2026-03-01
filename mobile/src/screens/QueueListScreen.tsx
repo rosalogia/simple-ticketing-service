@@ -88,7 +88,7 @@ export default function QueueListScreen({navigation}: Props) {
           onPress={() => navigation.navigate('UrgentTickets' as any)}>
           <View style={styles.urgentBannerContent}>
             {urgent.overdue_count > 0 && (
-              <Text style={styles.urgentOverdueText}>
+              <Text testID="urgent-overdue-text" style={styles.urgentOverdueText}>
                 {urgent.overdue_count} overdue
               </Text>
             )}
