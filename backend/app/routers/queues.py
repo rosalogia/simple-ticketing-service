@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+from datetime import datetime, timedelta, timezone
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session, selectinload
@@ -7,7 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..ratelimit import limiter
 
 from ..auth import get_current_session, get_current_user_id
-from ..config import DISCORD_BOT_TOKEN
+from ..config import DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET
 from ..database import get_db
 from ..models import (
     Queue,
@@ -16,6 +19,8 @@ from ..models import (
     Session as SessionModel,
     User,
 )
+
+logger = logging.getLogger(__name__)
 from ..schemas import (
     DiscordServerInfo,
     QueueCreate,
@@ -70,6 +75,64 @@ def _require_owner(db: Session, queue_id: int, user_id: int) -> QueueMember:
 # ── Discord routes (before /{id} to avoid path conflicts) ─────────────
 
 
+def _discord_auth_header(token: str) -> str:
+    """Return the correct Authorization header value for a Discord token.
+
+    Bot tokens follow the format `ID.timestamp.hmac` (two dots),
+    while OAuth access tokens are opaque strings without dots.
+    """
+    if token.count(".") == 2:
+        return f"Bot {token}"
+    return f"Bearer {token}"
+
+
+async def _refresh_discord_token(session: SessionModel, db: Session) -> bool:
+    """Refresh the Discord access token if expired. Returns True if token is valid."""
+    if not session.discord_refresh_token:
+        return bool(session.discord_access_token)
+
+    # Check if token is expired or about to expire (5-minute buffer)
+    if session.discord_token_expires_at:
+        buffer = timedelta(minutes=5)
+        expires_at = session.discord_token_expires_at
+        # DB may store naive datetimes — treat them as UTC
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at - buffer > datetime.now(timezone.utc):
+            return True  # Token still valid
+
+    if not DISCORD_CLIENT_ID or not DISCORD_CLIENT_SECRET:
+        logger.warning("Cannot refresh Discord token: missing client credentials")
+        return bool(session.discord_access_token)
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                f"{DISCORD_API}/oauth2/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": session.discord_refresh_token,
+                    "client_id": DISCORD_CLIENT_ID,
+                    "client_secret": DISCORD_CLIENT_SECRET,
+                },
+            )
+        if resp.status_code != 200:
+            logger.warning("Discord token refresh failed: %s %s", resp.status_code, resp.text)
+            return False
+
+        token_data = resp.json()
+        session.discord_access_token = token_data["access_token"]
+        session.discord_refresh_token = token_data.get("refresh_token", session.discord_refresh_token)
+        session.discord_token_expires_at = datetime.now(timezone.utc) + timedelta(
+            seconds=token_data.get("expires_in", 604800)
+        )
+        db.commit()
+        return True
+    except Exception:
+        logger.exception("Error refreshing Discord token")
+        return False
+
+
 @router.get("/discord-servers", response_model=list[DiscordServerInfo])
 async def list_discord_servers(
     db: Session = Depends(get_db),
@@ -79,6 +142,14 @@ async def list_discord_servers(
     if not session.discord_access_token:
         raise HTTPException(400, "No Discord access token stored. Re-login with guilds scope.")
 
+    # Refresh token if expired
+    token_valid = await _refresh_discord_token(session, db)
+    if not token_valid:
+        raise HTTPException(
+            401,
+            "Discord token expired and refresh failed. Please log out and log back in.",
+        )
+
     already_imported = {
         q.discord_guild_id
         for q in db.query(Queue).filter(Queue.discord_guild_id.isnot(None)).all()
@@ -87,10 +158,15 @@ async def list_discord_servers(
     async with httpx.AsyncClient(timeout=15.0) as client:
         guilds_resp = await client.get(
             f"{DISCORD_API}/users/@me/guilds",
-            headers={"Authorization": f"Bearer {session.discord_access_token}"},
+            headers={"Authorization": _discord_auth_header(session.discord_access_token)},
         )
         if guilds_resp.status_code != 200:
-            raise HTTPException(400, "Failed to fetch Discord servers")
+            logger.warning(
+                "Discord guilds API returned %s: %s",
+                guilds_resp.status_code,
+                guilds_resp.text[:500],
+            )
+            raise HTTPException(400, "Failed to fetch Discord servers. Try logging out and back in.")
         guilds = guilds_resp.json()
 
     result = []

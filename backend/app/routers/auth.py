@@ -105,6 +105,8 @@ async def callback(code: str, request: Request, db: DBSession = Depends(get_db))
     session = Session(
         user_id=user.id,
         discord_access_token=token_data["access_token"],
+        discord_refresh_token=token_data.get("refresh_token"),
+        discord_token_expires_at=datetime.now(timezone.utc) + timedelta(seconds=token_data.get("expires_in", 604800)),
         expires_at=datetime.now(timezone.utc) + timedelta(days=30),
     )
     db.add(session)
@@ -269,6 +271,8 @@ async def callback_mobile(code: str, db: DBSession = Depends(get_db)):
     session = Session(
         user_id=user.id,
         discord_access_token=token_data["access_token"],
+        discord_refresh_token=token_data.get("refresh_token"),
+        discord_token_expires_at=datetime.now(timezone.utc) + timedelta(seconds=token_data.get("expires_in", 604800)),
         expires_at=datetime.now(timezone.utc) + timedelta(days=30),
     )
     db.add(session)
