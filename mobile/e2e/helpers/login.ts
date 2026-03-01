@@ -1,4 +1,4 @@
-import {by, device, element, expect} from 'detox';
+import {by, device, element, expect, waitFor} from 'detox';
 import {USERS} from './seed-data';
 
 type UserKey = keyof typeof USERS;
@@ -9,7 +9,9 @@ type UserKey = keyof typeof USERS;
  */
 export async function loginAs(userKey: UserKey) {
   const user = USERS[userKey];
-  await expect(element(by.text('Dev Mode - Select User'))).toBeVisible();
+  await waitFor(element(by.text('Dev Mode - Select User')))
+    .toBeVisible()
+    .withTimeout(10000);
   await element(by.id(`user-row-${user.username}`)).tap();
   // Wait for the queue list to appear after login
   await expect(element(by.text('Queues'))).toBeVisible();

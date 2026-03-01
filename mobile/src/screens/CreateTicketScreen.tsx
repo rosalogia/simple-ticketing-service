@@ -6,9 +6,13 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
+  Pressable,
   Alert,
   ActivityIndicator,
+  Platform,
+  Keyboard,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {api, queueApi} from '../api/client';
 import {useAuth} from '../auth/AuthContext';
@@ -29,10 +33,14 @@ export default function CreateTicketScreen({navigation, route}: Props) {
   const [description, setDescription] = useState('');
   const [assigneeId, setAssigneeId] = useState<number | null>(null);
   const [priority, setPriority] = useState<string>('SEV3');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [category, setCategory] = useState('');
   const [type, setType] = useState('');
   const [item, setItem] = useState('');
+  const [categoryFocused, setCategoryFocused] = useState(false);
+  const [typeFocused, setTypeFocused] = useState(false);
+  const [itemFocused, setItemFocused] = useState(false);
   const [members, setMembers] = useState<QueueMember[]>([]);
   const [categories, setCategories] = useState<CategoriesResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -79,21 +87,23 @@ export default function CreateTicketScreen({navigation, route}: Props) {
     ]);
   };
 
-  const handleCategoryPicker = (
-    field: 'category' | 'type' | 'item',
-    values: string[],
+  const formatDate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const filterCtiValues = (values: string[], query: string) => {
+    if (!query.trim()) return values;
+    const q = query.toLowerCase();
+    return values.filter(v => v.toLowerCase().includes(q));
+  };
+
+  const selectCtiValue = (
+    value: string,
     setter: (v: string) => void,
+    focusSetter: (v: boolean) => void,
   ) => {
-    if (!values.length) return;
-    const options = values.map(v => ({
-      text: v,
-      onPress: () => setter(v),
-    }));
-    Alert.alert(`Select ${field}`, '', [
-      ...options,
-      {text: 'Clear', onPress: () => setter('')},
-      {text: 'Cancel', style: 'cancel'},
-    ]);
+    Keyboard.dismiss();
+    setter(value);
+    focusSetter(false);
   };
 
   const handleSubmit = async () => {
@@ -113,7 +123,7 @@ export default function CreateTicketScreen({navigation, route}: Props) {
         assignee_id: assigneeId,
         queue_id: queueId,
         priority,
-        due_date: dueDate || undefined,
+        due_date: dueDate ? formatDate(dueDate) : undefined,
         category: category || undefined,
         type: type || undefined,
         item: item || undefined,
@@ -187,51 +197,124 @@ export default function CreateTicketScreen({navigation, route}: Props) {
           <Text style={styles.pickerText}>{priorityLabels[priority]}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.label}>Due Date (YYYY-MM-DD)</Text>
-        <TextInput
-          style={styles.input}
-          value={dueDate}
-          onChangeText={setDueDate}
-          placeholder="2025-12-31"
-          placeholderTextColor={colors.stone400}
-        />
+        <Text style={styles.label}>Due Date</Text>
+        <TouchableOpacity
+          testID="due-date-picker-button"
+          style={styles.picker}
+          onPress={() => setShowDatePicker(true)}>
+          <Text style={dueDate ? styles.pickerText : styles.pickerPlaceholder}>
+            {dueDate ? formatDate(dueDate) : 'Select date...'}
+          </Text>
+        </TouchableOpacity>
+        {dueDate && (
+          <TouchableOpacity onPress={() => setDueDate(null)}>
+            <Text style={styles.clearLink}>Clear date</Text>
+          </TouchableOpacity>
+        )}
+        {showDatePicker && (
+          <DateTimePicker
+            testID="due-date-calendar"
+            value={dueDate || new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+            minimumDate={new Date()}
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(Platform.OS === 'ios');
+              if (event.type === 'set' && selectedDate) setDueDate(selectedDate);
+            }}
+          />
+        )}
 
         {categories && categories.categories.length > 0 && (
           <>
             <Text style={styles.label}>Category</Text>
-            <TouchableOpacity
-              style={styles.picker}
-              onPress={() =>
-                handleCategoryPicker('category', categories.categories, setCategory)
-              }>
-              <Text style={styles.pickerText}>{category || 'Select...'}</Text>
-            </TouchableOpacity>
+            <TextInput
+              testID="category-input"
+              style={styles.input}
+              value={category}
+              onChangeText={text => {
+                setCategory(text);
+                setCategoryFocused(true);
+              }}
+              onFocus={() => setCategoryFocused(true)}
+              placeholder="Type to search categories..."
+              placeholderTextColor={colors.stone400}
+            />
+            {categoryFocused && filterCtiValues(categories.categories, category).length > 0 && (
+              <View testID="category-suggestions" style={styles.suggestions}>
+                {filterCtiValues(categories.categories, category).map(v => (
+                  <Pressable
+                    testID={`category-suggestion-${v}`}
+                    key={v}
+                    style={styles.suggestionItem}
+                    onPress={() => selectCtiValue(v, setCategory, setCategoryFocused)}>
+                    <Text style={styles.suggestionName}>{v}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </>
         )}
 
         {categories && categories.types.length > 0 && (
           <>
             <Text style={styles.label}>Type</Text>
-            <TouchableOpacity
-              style={styles.picker}
-              onPress={() =>
-                handleCategoryPicker('type', categories.types, setType)
-              }>
-              <Text style={styles.pickerText}>{type || 'Select...'}</Text>
-            </TouchableOpacity>
+            <TextInput
+              testID="type-input"
+              style={styles.input}
+              value={type}
+              onChangeText={text => {
+                setType(text);
+                setTypeFocused(true);
+              }}
+              onFocus={() => setTypeFocused(true)}
+              placeholder="Type to search types..."
+              placeholderTextColor={colors.stone400}
+            />
+            {typeFocused && filterCtiValues(categories.types, type).length > 0 && (
+              <View testID="type-suggestions" style={styles.suggestions}>
+                {filterCtiValues(categories.types, type).map(v => (
+                  <Pressable
+                    testID={`type-suggestion-${v}`}
+                    key={v}
+                    style={styles.suggestionItem}
+                    onPress={() => selectCtiValue(v, setType, setTypeFocused)}>
+                    <Text style={styles.suggestionName}>{v}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </>
         )}
 
         {categories && categories.items.length > 0 && (
           <>
             <Text style={styles.label}>Item</Text>
-            <TouchableOpacity
-              style={styles.picker}
-              onPress={() =>
-                handleCategoryPicker('item', categories.items, setItem)
-              }>
-              <Text style={styles.pickerText}>{item || 'Select...'}</Text>
-            </TouchableOpacity>
+            <TextInput
+              testID="item-input"
+              style={styles.input}
+              value={item}
+              onChangeText={text => {
+                setItem(text);
+                setItemFocused(true);
+              }}
+              onFocus={() => setItemFocused(true)}
+              placeholder="Type to search items..."
+              placeholderTextColor={colors.stone400}
+            />
+            {itemFocused && filterCtiValues(categories.items, item).length > 0 && (
+              <View testID="item-suggestions" style={styles.suggestions}>
+                {filterCtiValues(categories.items, item).map(v => (
+                  <Pressable
+                    testID={`item-suggestion-${v}`}
+                    key={v}
+                    style={styles.suggestionItem}
+                    onPress={() => selectCtiValue(v, setItem, setItemFocused)}>
+                    <Text style={styles.suggestionName}>{v}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </>
         )}
 
@@ -296,6 +379,15 @@ const styles = StyleSheet.create({
   pickerText: {
     fontSize: fontSize.md,
     color: colors.ink,
+  },
+  pickerPlaceholder: {
+    fontSize: fontSize.md,
+    color: colors.stone400,
+  },
+  clearLink: {
+    fontSize: fontSize.sm,
+    color: colors.accent,
+    marginTop: spacing.xs,
   },
   suggestions: {
     backgroundColor: colors.white,

@@ -51,5 +51,8 @@ firebase_key.json
 .postgres-data/
 .direnv/
 
+# Obsidian
+.claude-vault/.obsidian/
+
 # Local-only
 BACKLOG.md

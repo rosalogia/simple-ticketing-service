@@ -47,17 +47,17 @@ export default function UrgentTicketsScreen() {
   };
 
   const navigateToTicket = (ticket: Ticket) => {
-    navigation.navigate('MainTabs', {queueId: ticket.queue_id});
-    // Small delay to let the tab navigator mount before navigating to detail
-    setTimeout(() => {
-      (navigation as any).navigate('MainTabs', {
-        screen: 'HomeTab',
-        params: {
-          screen: 'TicketDetail',
-          params: {ticketId: ticket.id},
-        },
-      });
-    }, 100);
+    // Navigate to MainTabs with nested screen params in a single call.
+    // React Navigation handles mounting the tab navigator and pushing
+    // to the nested TicketDetail screen in one transition.
+    (navigation as any).navigate('MainTabs', {
+      queueId: ticket.queue_id,
+      screen: 'HomeTab',
+      params: {
+        screen: 'TicketDetail',
+        params: {ticketId: ticket.id},
+      },
+    });
   };
 
   if (loading && !data) {
