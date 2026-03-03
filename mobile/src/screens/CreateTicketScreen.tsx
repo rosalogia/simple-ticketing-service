@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,64 @@ import InfoButton, {PriorityHelpContent} from '../components/InfoButton';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'CreateTicket'>;
 
+function CtiAutocomplete({
+  label,
+  testIDPrefix,
+  values,
+  value,
+  onSelect,
+}: {
+  label: string;
+  testIDPrefix: string;
+  values: string[];
+  value: string;
+  onSelect: (v: string) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const filtered = value.trim()
+    ? values.filter(v => v.toLowerCase().includes(value.toLowerCase()))
+    : values;
+
+  return (
+    <>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        testID={`${testIDPrefix}-input`}
+        style={styles.input}
+        value={value}
+        onChangeText={text => {
+          onSelect(text);
+          setFocused(true);
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          // Delay so suggestion onPress fires before hiding
+          setTimeout(() => setFocused(false), 150);
+        }}
+        placeholder={`Type to search ${label.toLowerCase()}s...`}
+        placeholderTextColor={colors.stone400}
+      />
+      {focused && filtered.length > 0 && (
+        <View testID={`${testIDPrefix}-suggestions`} style={styles.suggestions}>
+          {filtered.map(v => (
+            <Pressable
+              testID={`${testIDPrefix}-suggestion-${v}`}
+              key={v}
+              style={styles.suggestionItem}
+              onPress={() => {
+                Keyboard.dismiss();
+                onSelect(v);
+                setFocused(false);
+              }}>
+              <Text style={styles.suggestionName}>{v}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+    </>
+  );
+}
+
 const priorities = ['SEV1', 'SEV2', 'SEV3', 'SEV4'] as const;
 
 export default function CreateTicketScreen({navigation, route}: Props) {
@@ -38,9 +96,6 @@ export default function CreateTicketScreen({navigation, route}: Props) {
   const [category, setCategory] = useState('');
   const [type, setType] = useState('');
   const [item, setItem] = useState('');
-  const [categoryFocused, setCategoryFocused] = useState(false);
-  const [typeFocused, setTypeFocused] = useState(false);
-  const [itemFocused, setItemFocused] = useState(false);
   const [members, setMembers] = useState<QueueMember[]>([]);
   const [categories, setCategories] = useState<CategoriesResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -90,21 +145,7 @@ export default function CreateTicketScreen({navigation, route}: Props) {
   const formatDate = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  const filterCtiValues = (values: string[], query: string) => {
-    if (!query.trim()) return values;
-    const q = query.toLowerCase();
-    return values.filter(v => v.toLowerCase().includes(q));
-  };
-
-  const selectCtiValue = (
-    value: string,
-    setter: (v: string) => void,
-    focusSetter: (v: boolean) => void,
-  ) => {
-    Keyboard.dismiss();
-    setter(value);
-    focusSetter(false);
-  };
+  const today = useMemo(() => new Date(), []);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -214,10 +255,10 @@ export default function CreateTicketScreen({navigation, route}: Props) {
         {showDatePicker && (
           <DateTimePicker
             testID="due-date-calendar"
-            value={dueDate || new Date()}
+            value={dueDate || today}
             mode="date"
             display={Platform.OS === 'ios' ? 'inline' : 'default'}
-            minimumDate={new Date()}
+            minimumDate={today}
             onChange={(event, selectedDate) => {
               setShowDatePicker(Platform.OS === 'ios');
               if (event.type === 'set' && selectedDate) setDueDate(selectedDate);
@@ -226,96 +267,33 @@ export default function CreateTicketScreen({navigation, route}: Props) {
         )}
 
         {categories && categories.categories.length > 0 && (
-          <>
-            <Text style={styles.label}>Category</Text>
-            <TextInput
-              testID="category-input"
-              style={styles.input}
-              value={category}
-              onChangeText={text => {
-                setCategory(text);
-                setCategoryFocused(true);
-              }}
-              onFocus={() => setCategoryFocused(true)}
-              placeholder="Type to search categories..."
-              placeholderTextColor={colors.stone400}
-            />
-            {categoryFocused && filterCtiValues(categories.categories, category).length > 0 && (
-              <View testID="category-suggestions" style={styles.suggestions}>
-                {filterCtiValues(categories.categories, category).map(v => (
-                  <Pressable
-                    testID={`category-suggestion-${v}`}
-                    key={v}
-                    style={styles.suggestionItem}
-                    onPress={() => selectCtiValue(v, setCategory, setCategoryFocused)}>
-                    <Text style={styles.suggestionName}>{v}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </>
+          <CtiAutocomplete
+            label="Category"
+            testIDPrefix="category"
+            values={categories.categories}
+            value={category}
+            onSelect={setCategory}
+          />
         )}
 
         {categories && categories.types.length > 0 && (
-          <>
-            <Text style={styles.label}>Type</Text>
-            <TextInput
-              testID="type-input"
-              style={styles.input}
-              value={type}
-              onChangeText={text => {
-                setType(text);
-                setTypeFocused(true);
-              }}
-              onFocus={() => setTypeFocused(true)}
-              placeholder="Type to search types..."
-              placeholderTextColor={colors.stone400}
-            />
-            {typeFocused && filterCtiValues(categories.types, type).length > 0 && (
-              <View testID="type-suggestions" style={styles.suggestions}>
-                {filterCtiValues(categories.types, type).map(v => (
-                  <Pressable
-                    testID={`type-suggestion-${v}`}
-                    key={v}
-                    style={styles.suggestionItem}
-                    onPress={() => selectCtiValue(v, setType, setTypeFocused)}>
-                    <Text style={styles.suggestionName}>{v}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </>
+          <CtiAutocomplete
+            label="Type"
+            testIDPrefix="type"
+            values={categories.types}
+            value={type}
+            onSelect={setType}
+          />
         )}
 
         {categories && categories.items.length > 0 && (
-          <>
-            <Text style={styles.label}>Item</Text>
-            <TextInput
-              testID="item-input"
-              style={styles.input}
-              value={item}
-              onChangeText={text => {
-                setItem(text);
-                setItemFocused(true);
-              }}
-              onFocus={() => setItemFocused(true)}
-              placeholder="Type to search items..."
-              placeholderTextColor={colors.stone400}
-            />
-            {itemFocused && filterCtiValues(categories.items, item).length > 0 && (
-              <View testID="item-suggestions" style={styles.suggestions}>
-                {filterCtiValues(categories.items, item).map(v => (
-                  <Pressable
-                    testID={`item-suggestion-${v}`}
-                    key={v}
-                    style={styles.suggestionItem}
-                    onPress={() => selectCtiValue(v, setItem, setItemFocused)}>
-                    <Text style={styles.suggestionName}>{v}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </>
+          <CtiAutocomplete
+            label="Item"
+            testIDPrefix="item"
+            values={categories.items}
+            value={item}
+            onSelect={setItem}
+          />
         )}
 
         <TouchableOpacity
