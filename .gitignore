@@ -44,7 +44,7 @@ firebase_key.json
 .DS_Store
 
 # Playwright
-*.png
+frontend/test-results/
 .playwright-mcp
 
 # Nix / local Postgres
