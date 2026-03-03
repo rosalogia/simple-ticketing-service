@@ -1,6 +1,6 @@
-import {by, device, element, expect, waitFor} from 'detox';
+import {by, device, element, expect} from 'detox';
 import {loginAs} from './helpers/login';
-import {goToHousematesQueue, switchToByMeTab} from './helpers/navigation';
+import {goToHousematesQueue, switchToByMeTab, navigateToCreateTicket, scrollToSubmit} from './helpers/navigation';
 
 describe('Tickets', () => {
   beforeAll(async () => {
@@ -14,7 +14,7 @@ describe('Tickets', () => {
   });
 
   it('creates a new ticket', async () => {
-    await element(by.id('new-ticket-fab')).tap();
+    await navigateToCreateTicket();
 
     await element(by.id('title-input')).typeText('E2E test ticket');
     await element(by.id('description-input')).typeText('Created by Detox E2E test');
@@ -22,10 +22,7 @@ describe('Tickets', () => {
     // newline. Tap the single-line title then press return to dismiss instead.
     await element(by.id('title-input')).tap();
     await element(by.id('title-input')).tapReturnKey();
-    await waitFor(element(by.id('submit-ticket-button')))
-      .toBeVisible()
-      .whileElement(by.id('create-ticket-scroll'))
-      .scroll(200, 'down');
+    await scrollToSubmit();
     await element(by.id('submit-ticket-button')).tap();
 
     // Should navigate back to dashboard

@@ -1,4 +1,4 @@
-import {by, element, expect} from 'detox';
+import {by, element, expect, waitFor} from 'detox';
 import {QUEUE} from './seed-data';
 
 /**
@@ -36,4 +36,24 @@ export async function goToNotifications() {
  */
 export async function goToSettings() {
   await element(by.label('tab-bar-settings')).tap();
+}
+
+/**
+ * Tap the FAB and wait for the create ticket form.
+ */
+export async function navigateToCreateTicket() {
+  await element(by.id('new-ticket-fab')).tap();
+  await waitFor(element(by.id('title-input')))
+    .toBeVisible()
+    .withTimeout(5000);
+}
+
+/**
+ * Scroll until the submit button is visible on the create ticket form.
+ */
+export async function scrollToSubmit() {
+  await waitFor(element(by.id('submit-ticket-button')))
+    .toBeVisible()
+    .whileElement(by.id('create-ticket-scroll'))
+    .scroll(200, 'down');
 }
