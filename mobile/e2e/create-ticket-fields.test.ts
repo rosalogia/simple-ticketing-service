@@ -1,20 +1,6 @@
 import {by, device, element, expect, waitFor} from 'detox';
 import {loginAs} from './helpers/login';
-import {goToHousematesQueue} from './helpers/navigation';
-
-async function navigateToCreateTicket() {
-  await element(by.id('new-ticket-fab')).tap();
-  await waitFor(element(by.id('title-input')))
-    .toBeVisible()
-    .withTimeout(5000);
-}
-
-async function scrollToSubmit() {
-  await waitFor(element(by.id('submit-ticket-button')))
-    .toBeVisible()
-    .whileElement(by.id('create-ticket-scroll'))
-    .scroll(200, 'down');
-}
+import {goToHousematesQueue, navigateToCreateTicket, scrollToSubmit} from './helpers/navigation';
 
 describe('Create Ticket - Date Picker & CTI Autocomplete', () => {
   beforeAll(async () => {
