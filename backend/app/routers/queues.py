@@ -292,6 +292,9 @@ async def create_queue_from_discord(
         )
         db.add(queue_member)
 
+    # Flush so the creator-membership check below can see members just added
+    db.flush()
+
     # Ensure creator is a member/owner
     creator_membership = (
         db.query(QueueMember)
